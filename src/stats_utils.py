@@ -8,7 +8,6 @@ import os
 def compute_wilcoxon_test(results_df):
     """
     Perform the Wilcoxon signed-ranks test for 2 algorithms.
-    This is the recommended non-parametric alternative for pairwise comparisons.
     """
     if results_df.shape[1] != 2:
         raise ValueError("Wilcoxon test is intended for exactly 2 algorithms.")
@@ -26,21 +25,18 @@ def compute_wilcoxon_test(results_df):
 def compute_friedman_test(results_df):
     """
     Perform the Friedman test to compare multiple algorithms.
-    Returns the F-statistic (Iman-Davenport correction) and p-value.
     """
     n_datasets, k_algorithms = results_df.shape
     if k_algorithms < 2:
         raise ValueError("Friedman test requires at least 2 algorithms.")
 
-    # Execute Friedman test (standard chi-square)
+    # Execute Friedman test
     chi2_f, p_chi2 = stats.friedmanchisquare(*[results_df[col] for col in results_df.columns])
 
-    # Iman and Davenport correction for a less conservative F-statistic
+    # Iman and Davenport correction
     f_stat = ((n_datasets - 1) * chi2_f) / (n_datasets * (k_algorithms - 1) - chi2_f)
     p_value = stats.f.sf(f_stat, k_algorithms - 1, (k_algorithms - 1) * (n_datasets - 1))
 
-    # Rank algorithms (1 is best, k is worst)
-    # Note: Higher fitness is worse in optimization, but ranks should reflect 1 as best
     ranks = results_df.rank(axis=1, ascending=True, method='average')
     average_ranks = ranks.mean()
 
@@ -49,54 +45,38 @@ def compute_friedman_test(results_df):
 def plot_critical_difference_diagram(average_ranks, n_datasets, alpha=0.05, output_dir="."):
     """
     Generate a Critical Difference (CD) diagram using Nemenyi post-hoc test.
-    Improved version to prevent label overlapping using staggered heights.
     """
     k = len(average_ranks)
-    
-    # Critical values (q_alpha) for Nemenyi test (Demšar, 2006, Table 5a)
     q_alpha_005 = {2: 1.960, 3: 2.343, 4: 2.569, 5: 2.728, 6: 2.850, 7: 2.949, 8: 3.031, 9: 3.102, 10: 3.164}
-    
     q_val = q_alpha_005.get(k, 3.0) 
     cd = q_val * np.sqrt((k * (k + 1)) / (6 * n_datasets))
 
-    # Sorting for visualization
     sorted_ranks = average_ranks.sort_values()
     names = sorted_ranks.index
     values = sorted_ranks.values
 
     plt.figure(figsize=(14, 6))
     ax = plt.gca()
-    
-    # Ranks: 1 (best) on the right
     ax.set_xlim(max(k, values.max()) + 0.7, 0.3) 
     ax.set_ylim(-2.0, 1.5)
-    
-    # Main axis
     plt.axhline(0, color='black', lw=1.5)
     ticks = np.arange(1, int(max(k, values.max())) + 1)
     plt.xticks(ticks, ticks, fontsize=11)
     plt.title(f"Critical Difference Diagram (CD={cd:.3f}, alpha={alpha})", pad=20, fontsize=13)
 
-    # Plot algorithms and their ranks with dynamic staggered heights
     for i, (name, rank) in enumerate(zip(names, values)):
-        # Cycles through 3 different vertical levels to prevent text overlap
         y_level = -0.4 - (i % 3) * 0.45 
-        
         plt.plot([rank, rank], [0, y_level], color='black', lw=1, ls='--')
-        plt.text(rank, y_level - 0.1, f"{name} ({rank:.2f})", 
-                 ha='center', va='top', rotation=30, fontsize=10, fontweight='bold')
+        plt.text(rank, y_level - 0.1, f"{name} ({rank:.2f})", ha='center', va='top', rotation=30, fontsize=10, fontweight='bold')
 
-    # Plot CD bar at the top
     cd_x_start = max(ticks)
     plt.plot([cd_x_start, cd_x_start - cd], [1.1, 1.1], color='red', lw=4)
     plt.text(cd_x_start - cd/2, 1.2, "CD", color='red', ha='center', fontweight='bold')
 
-    # Connect groups that are NOT significantly different (Blue lines)
     for i in range(k):
         for j in range(i + 1, k):
             if abs(values[i] - values[j]) <= cd:
-                plt.plot([values[i], values[j]], [0.25 + (i*0.1), 0.25 + (i*0.1)], 
-                         color='blue', lw=3, alpha=0.5)
+                plt.plot([values[i], values[j]], [0.25 + (i*0.1), 0.25 + (i*0.1)], color='blue', lw=3, alpha=0.5)
 
     plt.axis('off')
     plt.tight_layout()
@@ -104,17 +84,24 @@ def plot_critical_difference_diagram(average_ranks, n_datasets, alpha=0.05, outp
     plt.savefig(save_path, dpi=300, bbox_inches='tight')
     plt.close()
 
-def plot_boxplot_comparison(results_df, output_dir):
+def plot_boxplot_comparison(results_df, output_dir, filename="boxplot_comparison.png", title="Performance Distribution", y_scale='symlog'):
     """
     Generate a boxplot to visualize performance distribution.
+    Now accepts filename, title and scale arguments for reuse.
     """
     plt.figure(figsize=(8, 6))
     sns.boxplot(data=results_df)
-    plt.yscale('symlog', linthresh=1e-3) # Support for negative values
-    plt.title("Performance Distribution Comparison")
-    plt.ylabel("Fitness Value (Symlog Scale)")
-    plt.xlabel("Algorithm Configuration")
     
-    save_path = os.path.join(output_dir, "boxplot_comparison.png")
+    if y_scale == 'symlog':
+        plt.yscale('symlog', linthresh=1e-3)
+    else:
+        plt.yscale(y_scale)
+        
+    plt.title(title)
+    plt.ylabel(f"Fitness Value ({y_scale.capitalize()} Scale)")
+    plt.xlabel("Algorithm Configuration")
+    plt.grid(True, axis='y', alpha=0.3)
+    
+    save_path = os.path.join(output_dir, filename)
     plt.savefig(save_path, dpi=300)
     plt.close()
