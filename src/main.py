@@ -6,7 +6,8 @@ import os
 import time
 import optuna.visualization as vis 
 from benchmarks import BenchmarkFactory
-from optimizers import GreyWolfOptimizer
+# Se añade WhaleOptimizationAlgorithm a la importación
+from optimizers import GreyWolfOptimizer, WhaleOptimizationAlgorithm 
 from stats_utils import compute_friedman_test, plot_critical_difference_diagram
 
 # Global variables for experiment control
@@ -15,6 +16,15 @@ MAX_ITER = 50
 N_REPETITIONS = 5 
 OPTUNA_TRIALS = 20 
 SEED_TRANSFORM = 42 
+
+# --- OPTIMIZATION RANGES (GLOBAL VARIABLES) ---
+# GWO Parameters
+GWO_POP_RANGE = (10, 80)
+
+# WOA Parameters
+WOA_POP_RANGE = (10, 80)
+WOA_B_RANGE = (0.5, 2.0)      # Spiral shape constant range
+WOA_P_RANGE = (0.4, 0.6)      # Mechanism probability switch range
 
 # Success rate configuration
 SUCCESS_THRESHOLD = 1e-2
@@ -25,9 +35,14 @@ KNOWN_OPTIMA = {
 }
 
 # Directory structure
-BASE_GRAPHICS_DIR = "graphics/GWO"
-STRAT_OUTPUT_DIR = os.path.join(BASE_GRAPHICS_DIR, "Strategies")
-POP_OUTPUT_DIR = os.path.join(BASE_GRAPHICS_DIR, "Population")
+BASE_GRAPHICS_DIR_GWO = "graphics/GWO"
+STRAT_OUTPUT_DIR_GWO = os.path.join(BASE_GRAPHICS_DIR_GWO, "Strategies")
+POP_OUTPUT_DIR_GWO = os.path.join(BASE_GRAPHICS_DIR_GWO, "Population")
+
+# New WOA Directories
+BASE_GRAPHICS_DIR_WOA = "graphics/WOA"
+STRAT_OUTPUT_DIR_WOA = os.path.join(BASE_GRAPHICS_DIR_WOA, "Strategies")
+POP_OUTPUT_DIR_WOA = os.path.join(BASE_GRAPHICS_DIR_WOA, "Population")
 
 # Benchmark problems to analyze
 PROBLEM_NAMES = [
@@ -58,11 +73,12 @@ def calculate_and_save_metrics(raw_data, problem_list, config_list, output_path)
             })
     pd.DataFrame(summary).to_csv(output_path, index=False)
 
-def global_objective(trial):
+def gwo_global_objective(trial):
     """
-    Optuna objective function to optimize population size and strategy globally.
+    Optuna objective function to optimize population size and strategy globally for GWO.
     """
-    pop_size = trial.suggest_int('pop_size', 10, 80)
+    # Using Global Variable for Range
+    pop_size = trial.suggest_int('pop_size', GWO_POP_RANGE[0], GWO_POP_RANGE[1])
     strategy = trial.suggest_categorical('strategy', STRATEGIES)
     scores = []
     
@@ -79,29 +95,62 @@ def global_objective(trial):
         
     return np.mean(scores)
 
+def woa_global_objective(trial):
+    """
+    Optuna objective function to optimize parameters globally for WOA.
+    """
+    # Using Global Variables for Ranges
+    pop_size = trial.suggest_int('pop_size', WOA_POP_RANGE[0], WOA_POP_RANGE[1])
+    strategy = trial.suggest_categorical('strategy', STRATEGIES)
+    b_val = trial.suggest_float('b', WOA_B_RANGE[0], WOA_B_RANGE[1])
+    p_val = trial.suggest_float('p', WOA_P_RANGE[0], WOA_P_RANGE[1])
+    
+    scores = []
+    
+    for name in PROBLEM_NAMES:
+        np.random.seed(SEED_TRANSFORM)
+        problem = BenchmarkFactory.create(name, DIM)
+        reps = []
+        for r in range(3):
+            np.random.seed(trial.number * 100 + r)
+            woa = WhaleOptimizationAlgorithm(problem, pop_size, MAX_ITER)
+            # Pass optimized parameters to WOA
+            _, score, _ = woa.optimize(b=b_val, p_switch=p_val, strategy=strategy)
+            reps.append(score)
+        scores.append(np.mean(reps))
+        
+    return np.mean(scores)
+
 def main():
     # Initialize output directory structure
-    os.makedirs(STRAT_OUTPUT_DIR, exist_ok=True)
-    os.makedirs(POP_OUTPUT_DIR, exist_ok=True)
+    for d in [STRAT_OUTPUT_DIR_GWO, POP_OUTPUT_DIR_GWO, STRAT_OUTPUT_DIR_WOA, POP_OUTPUT_DIR_WOA]:
+        os.makedirs(d, exist_ok=True)
 
-    # 1. OPTUNA PARAMETER TUNING
-    print("Step 1: Finding optimal global parameters using Optuna")
-    study = optuna.create_study(direction='minimize')
-    study.optimize(global_objective, n_trials=OPTUNA_TRIALS)
-    best_params = study.best_params
-    print(f"Optimal configuration: {best_params}")
+    # ==========================================
+    # PART 1: GREY WOLF OPTIMIZER (GWO) STUDY
+    # ==========================================
+    print("="*60)
+    print("STARTING GWO ANALYSIS")
+    print("="*60)
 
-    # Export parameter importance plot
+    # 1. OPTUNA PARAMETER TUNING (GWO)
+    print("Step 1 (GWO): Finding optimal global parameters using Optuna")
+    study_gwo = optuna.create_study(direction='minimize')
+    study_gwo.optimize(gwo_global_objective, n_trials=OPTUNA_TRIALS)
+    best_params_gwo = study_gwo.best_params
+    print(f"Optimal GWO configuration: {best_params_gwo}")
+
+    # Export parameter importance plot (GWO)
     try:
-        vis.plot_param_importances(study).write_html(os.path.join(BASE_GRAPHICS_DIR, "param_importances.html"))
+        vis.plot_param_importances(study_gwo).write_html(os.path.join(BASE_GRAPHICS_DIR_GWO, "param_importances.html"))
     except Exception as e:
-        print(f"Skipping importance plot: {e}")
+        print(f"Skipping GWO importance plot: {e}")
 
-    # 2. STRATEGY COMPARISON
-    print("\nStep 2: Analyzing decay strategies")
-    results_strat = {s: [] for s in STRATEGIES}
-    conv_strat = {p: {s: [] for s in STRATEGIES} for p in PROBLEM_NAMES}
-    raw_strat_data = {p: {s: [] for s in STRATEGIES} for p in PROBLEM_NAMES} # For metrics
+    # 2. STRATEGY COMPARISON (GWO)
+    print("\nStep 2 (GWO): Analyzing decay strategies")
+    results_strat_gwo = {s: [] for s in STRATEGIES}
+    conv_strat_gwo = {p: {s: [] for s in STRATEGIES} for p in PROBLEM_NAMES}
+    raw_strat_data_gwo = {p: {s: [] for s in STRATEGIES} for p in PROBLEM_NAMES}
 
     for name in PROBLEM_NAMES:
         np.random.seed(SEED_TRANSFORM)
@@ -110,36 +159,36 @@ def main():
             f_reps, h_reps = [], []
             for rep in range(N_REPETITIONS):
                 np.random.seed(rep)
-                gwo = GreyWolfOptimizer(problem, best_params['pop_size'], MAX_ITER)
+                gwo = GreyWolfOptimizer(problem, best_params_gwo['pop_size'], MAX_ITER)
                 _, score, history = gwo.optimize(strategy=strat)
                 f_reps.append(score)
                 h_reps.append(history)
-            results_strat[strat].append(np.mean(f_reps))
-            conv_strat[name][strat] = np.mean(h_reps, axis=0)
-            raw_strat_data[name][strat] = f_reps # Collect raw data
+            results_strat_gwo[strat].append(np.mean(f_reps))
+            conv_strat_gwo[name][strat] = np.mean(h_reps, axis=0)
+            raw_strat_data_gwo[name][strat] = f_reps
 
-    # Save Strategy metrics table
-    calculate_and_save_metrics(raw_strat_data, PROBLEM_NAMES, STRATEGIES, os.path.join(STRAT_OUTPUT_DIR, "strategy_metrics.csv"))
+    # Save GWO Strategy metrics
+    calculate_and_save_metrics(raw_strat_data_gwo, PROBLEM_NAMES, STRATEGIES, os.path.join(STRAT_OUTPUT_DIR_GWO, "strategy_metrics.csv"))
 
-    # Strategy Statistical Validation using Iman-Davenport correction
-    df_strat = pd.DataFrame(results_strat, index=PROBLEM_NAMES)
-    f_stat_s, p_val_s, ranks_s = compute_friedman_test(df_strat)
-    print(f"Strategy Friedman Result: F = {f_stat_s:.4f}, p = {p_val_s:.4e}")
+    # GWO Strategy Statistical Validation
+    df_strat_gwo = pd.DataFrame(results_strat_gwo, index=PROBLEM_NAMES)
+    f_stat_s, p_val_s, ranks_s = compute_friedman_test(df_strat_gwo)
+    print(f"GWO Strategy Friedman Result: F = {f_stat_s:.4f}, p = {p_val_s:.4e}")
 
     if p_val_s < 0.05:
-        print("Significant strategy difference found. Generating CD Diagram")
-        plot_critical_difference_diagram(ranks_s, len(PROBLEM_NAMES), output_dir=STRAT_OUTPUT_DIR)
+        print("Significant GWO strategy difference found. Generating CD Diagram")
+        plot_critical_difference_diagram(ranks_s, len(PROBLEM_NAMES), output_dir=STRAT_OUTPUT_DIR_GWO)
     else:
-        print("No significant strategy differences detected")
+        print("No significant GWO strategy differences detected")
 
-    # 3. POPULATION SWEEP
-    print("\nStep 3: Analyzing population scale impact")
-    results_pop = {f"N_{n}": [] for n in POP_SIZES}
-    times_pop = {f"N_{n}": [] for n in POP_SIZES}
-    conv_pop = {p: {f"N_{n}": [] for n in POP_SIZES} for p in PROBLEM_NAMES}
-    raw_pop_data = {p: {f"N_{n}": [] for n in POP_SIZES} for p in PROBLEM_NAMES} # For metrics
+    # 3. POPULATION SWEEP (GWO)
+    print("\nStep 3 (GWO): Analyzing population scale impact")
+    results_pop_gwo = {f"N_{n}": [] for n in POP_SIZES}
+    times_pop_gwo = {f"N_{n}": [] for n in POP_SIZES}
+    conv_pop_gwo = {p: {f"N_{n}": [] for n in POP_SIZES} for p in PROBLEM_NAMES}
+    raw_pop_data_gwo = {p: {f"N_{n}": [] for n in POP_SIZES} for p in PROBLEM_NAMES}
     
-    target_strat = best_params['strategy']
+    target_strat_gwo = best_params_gwo['strategy']
 
     for name in PROBLEM_NAMES:
         np.random.seed(SEED_TRANSFORM)
@@ -149,133 +198,298 @@ def main():
             for rep in range(N_REPETITIONS):
                 np.random.seed(rep)
                 gwo = GreyWolfOptimizer(problem, n, MAX_ITER)
-                # Measure computational cost using process time
                 start_t = time.process_time()
-                _, score, history = gwo.optimize(strategy=target_strat)
+                _, score, history = gwo.optimize(strategy=target_strat_gwo)
                 t_reps.append(time.process_time() - start_t)
                 f_reps.append(score)
                 h_reps.append(history)
             
-            results_pop[f"N_{n}"].append(np.mean(f_reps))
-            times_pop[f"N_{n}"].append(np.mean(t_reps))
-            conv_pop[name][f"N_{n}"] = np.mean(h_reps, axis=0)
-            raw_pop_data[name][f"N_{n}"] = f_reps # Collect raw data
+            results_pop_gwo[f"N_{n}"].append(np.mean(f_reps))
+            times_pop_gwo[f"N_{n}"].append(np.mean(t_reps))
+            conv_pop_gwo[name][f"N_{n}"] = np.mean(h_reps, axis=0)
+            raw_pop_data_gwo[name][f"N_{n}"] = f_reps
 
-    # Save Population metrics table
-    calculate_and_save_metrics(raw_pop_data, PROBLEM_NAMES, [f"N_{n}" for n in POP_SIZES], os.path.join(POP_OUTPUT_DIR, "population_metrics.csv"))
+    # Save GWO Population metrics
+    calculate_and_save_metrics(raw_pop_data_gwo, PROBLEM_NAMES, [f"N_{n}" for n in POP_SIZES], os.path.join(POP_OUTPUT_DIR_GWO, "population_metrics.csv"))
 
-    # Population Statistical Validation
-    df_pop = pd.DataFrame(results_pop, index=PROBLEM_NAMES)
-    f_stat_p, p_val_p, ranks_p = compute_friedman_test(df_pop)
-    print(f"Population Friedman Result: F = {f_stat_p:.4f}, p = {p_val_p:.4e}")
+    # GWO Population Statistical Validation
+    df_pop_gwo = pd.DataFrame(results_pop_gwo, index=PROBLEM_NAMES)
+    f_stat_p, p_val_p, ranks_p = compute_friedman_test(df_pop_gwo)
+    print(f"GWO Population Friedman Result: F = {f_stat_p:.4f}, p = {p_val_p:.4e}")
 
     if p_val_p < 0.05:
-        print("Significant population difference found. Generating CD Diagram")
-        plot_critical_difference_diagram(ranks_p, len(PROBLEM_NAMES), output_dir=POP_OUTPUT_DIR)
-    else:
-        print("No significant population differences detected")
+        print("Significant GWO population difference found. Generating CD Diagram")
+        plot_critical_difference_diagram(ranks_p, len(PROBLEM_NAMES), output_dir=POP_OUTPUT_DIR_GWO)
 
-    # 4. ENHANCED VISUALIZATIONS
-    print("\nStep 4: Generating plots and trend analysis")
-
-    # A. Accuracy vs Cost Trend Plot
+    # 4. GWO VISUALIZATIONS
+    print("\nStep 4 (GWO): Generating plots")
+    
+    # Trade-off
     plt.figure(figsize=(10, 6))
-    avg_fitness = [np.mean(results_pop[f"N_{n}"]) for n in POP_SIZES]
-    avg_times = [np.mean(times_pop[f"N_{n}"]) for n in POP_SIZES]
-    plt.plot(avg_times, avg_fitness, '-o', color='darkred', lw=2, label='Population Scale Trend')
-    
+    avg_fit_gwo = [np.mean(results_pop_gwo[f"N_{n}"]) for n in POP_SIZES]
+    avg_time_gwo = [np.mean(times_pop_gwo[f"N_{n}"]) for n in POP_SIZES]
+    plt.plot(avg_time_gwo, avg_fit_gwo, '-o', color='darkred', lw=2, label='Population Scale Trend')
     for i, n in enumerate(POP_SIZES):
-        plt.annotate(f"N={n}", (avg_times[i], avg_fitness[i]), xytext=(5, 5), textcoords="offset points")
-    
+        plt.annotate(f"N={n}", (avg_time_gwo[i], avg_fit_gwo[i]), xytext=(5, 5), textcoords="offset points")
     plt.yscale('symlog', linthresh=1e-2)
-    plt.title("GWO Resource Trade-off: Precision vs CPU Time")
+    plt.title("GWO Resource Trade-off")
     plt.xlabel("Mean CPU Time (s)")
     plt.ylabel("Mean Fitness Value")
     plt.grid(True, alpha=0.3)
-    plt.savefig(os.path.join(POP_OUTPUT_DIR, "tradeoff_line_trend.png"))
+    plt.savefig(os.path.join(POP_OUTPUT_DIR_GWO, "tradeoff_line_trend.png"))
     plt.close()
 
-    # B. Population Convergence per Problem
+    # Convergence plots (Population & Strategy) - Simplified for brevity in main loop
+    # ... (Plots generation logic is identical to previous versions, preserved) ...
+    # Re-implementing the loop for plotting as requested to keep functionality
+    
+    # Population Convergence
     for name in PROBLEM_NAMES:
         plt.figure(figsize=(9, 6))
-        vals = np.concatenate([conv_pop[name][f"N_{n}"] for n in POP_SIZES])
+        vals = np.concatenate([conv_pop_gwo[name][f"N_{n}"] for n in POP_SIZES])
         for n in POP_SIZES:
-            plt.plot(conv_pop[name][f"N_{n}"], label=f"N={n}")
-        plt.title(f"Convergence by Population: {name.capitalize()}")
+            plt.plot(conv_pop_gwo[name][f"N_{n}"], label=f"N={n}")
+        plt.title(f"GWO Convergence by Population: {name.capitalize()}")
         plt.xlabel("Iteration")
         plt.ylabel("Fitness Score")
-
-        if name.lower() == 'michalewicz':
-            plt.yscale('linear')  # Michalewicz se ve mejor en escala lineal
-        elif np.any(vals <= 0):
-            plt.yscale('symlog', linthresh=1e-2)
-        else:
-            plt.yscale('log')
-
+        if name.lower() == 'michalewicz': plt.yscale('linear')
+        elif np.any(vals <= 0): plt.yscale('symlog', linthresh=1e-2)
+        else: plt.yscale('log')
         plt.legend()
         plt.grid(True, which="both", alpha=0.2)
-        plt.savefig(os.path.join(POP_OUTPUT_DIR, f"pop_conv_{name}.png"))
+        plt.savefig(os.path.join(POP_OUTPUT_DIR_GWO, f"pop_conv_{name}.png"))
         plt.close()
 
-    # C. Global Population Efficiency (Normalized)
+    # Strategy Convergence
+    for name in PROBLEM_NAMES:
+        plt.figure(figsize=(9, 6))
+        vals = np.concatenate([conv_strat_gwo[name][strat] for strat in STRATEGIES])
+        for strat in STRATEGIES:
+            plt.plot(conv_strat_gwo[name][strat], label=strat)
+        plt.title(f"GWO Strategy Convergence: {name.capitalize()}")
+        plt.xlabel("Iteration")
+        plt.ylabel("Fitness Score")
+        if name.lower() == 'michalewicz': plt.yscale('linear')
+        elif np.any(vals <= 0): plt.yscale('symlog', linthresh=1e-2)
+        else: plt.yscale('log')
+        plt.legend()
+        plt.grid(True, which="both", alpha=0.3)
+        plt.savefig(os.path.join(STRAT_OUTPUT_DIR_GWO, f"conv_{name}.png"))
+        plt.close()
+
+    # Global Efficiency Plots
+    # Pop
     plt.figure(figsize=(10, 6))
     for n in POP_SIZES:
         norms = []
         for name in PROBLEM_NAMES:
-            h = np.array(conv_pop[name][f"N_{n}"])
+            h = np.array(conv_pop_gwo[name][f"N_{n}"])
             h_min, h_max = h.min(), h.max()
             norms.append((h - h_min) / (h_max - h_min + 1e-12) if h_max > h_min else np.zeros_like(h))
         plt.plot(np.mean(norms, axis=0), label=f"N={n}")
-    
-    plt.title("Normalized Global Efficiency by Population Size")
-    plt.xlabel("Iteration")
-    plt.ylabel("Normalized Mean Fitness")
+    plt.title("GWO Normalized Global Efficiency (Population)")
     plt.legend()
-    plt.grid(True, alpha=0.3)
-    plt.savefig(os.path.join(POP_OUTPUT_DIR, "global_pop_efficiency.png"))
+    plt.savefig(os.path.join(POP_OUTPUT_DIR_GWO, "global_pop_efficiency.png"))
     plt.close()
 
-    # D. Strategy Convergence per Problem
-    for name in PROBLEM_NAMES:
-        plt.figure(figsize=(9, 6))
-        vals = np.concatenate([conv_strat[name][strat] for strat in STRATEGIES])
-        for strat in STRATEGIES:
-            plt.plot(conv_strat[name][strat], label=strat)
-        plt.title(f"Strategy Convergence: {name.capitalize()}")
-        plt.xlabel("Iteration")
-        plt.ylabel("Fitness Score")
-        
-        if name.lower() == 'michalewicz':
-            plt.yscale('linear')  
-        elif np.any(vals <= 0):
-            plt.yscale('symlog', linthresh=1e-2)
-        else:
-            plt.yscale('log')
-
-        plt.legend()
-        plt.grid(True, which="both", alpha=0.3)
-        plt.savefig(os.path.join(STRAT_OUTPUT_DIR, f"conv_{name}.png"))
-        plt.close()
-
-    # E. Global Strategy Efficiency (Normalized Across All Problems)
+    # Strat
     plt.figure(figsize=(10, 6))
     for strat in STRATEGIES:
         norms = []
         for name in PROBLEM_NAMES:
-            h = np.array(conv_strat[name][strat])
+            h = np.array(conv_strat_gwo[name][strat])
             h_min, h_max = h.min(), h.max()
             norms.append((h - h_min) / (h_max - h_min + 1e-12) if h_max > h_min else np.zeros_like(h))
         plt.plot(np.mean(norms, axis=0), label=strat, lw=2.5)
-    
-    plt.title("Normalized Global Strategy Efficiency")
-    plt.xlabel("Iteration")
-    plt.ylabel("Normalized Mean Fitness")
+    plt.title("GWO Normalized Global Efficiency (Strategy)")
     plt.legend()
-    plt.grid(True, alpha=0.3)
-    plt.savefig(os.path.join(STRAT_OUTPUT_DIR, "global_strategy_efficiency.png"))
+    plt.savefig(os.path.join(STRAT_OUTPUT_DIR_GWO, "global_strategy_efficiency.png"))
     plt.close()
 
-    print("All tasks finished. Results saved in 'graphics/GWO/'")
+
+    # ==========================================
+    # PART 2: WHALE OPTIMIZATION ALGORITHM (WOA) STUDY
+    # ==========================================
+    print("\n" + "="*60)
+    print("STARTING WOA ANALYSIS")
+    print("="*60)
+
+    # 1. OPTUNA PARAMETER TUNING (WOA)
+    print("Step 1 (WOA): Finding optimal global parameters using Optuna")
+    study_woa = optuna.create_study(direction='minimize')
+    study_woa.optimize(woa_global_objective, n_trials=OPTUNA_TRIALS)
+    best_params_woa = study_woa.best_params
+    print(f"Optimal WOA configuration: {best_params_woa}")
+
+    # Export parameter importance plot (WOA)
+    try:
+        vis.plot_param_importances(study_woa).write_html(os.path.join(BASE_GRAPHICS_DIR_WOA, "param_importances.html"))
+    except Exception as e:
+        print(f"Skipping WOA importance plot: {e}")
+
+    # 2. STRATEGY COMPARISON (WOA)
+    # Uses best_params_woa for pop_size, b, and p. Varies Strategy.
+    print("\nStep 2 (WOA): Analyzing decay strategies")
+    results_strat_woa = {s: [] for s in STRATEGIES}
+    conv_strat_woa = {p: {s: [] for s in STRATEGIES} for p in PROBLEM_NAMES}
+    raw_strat_data_woa = {p: {s: [] for s in STRATEGIES} for p in PROBLEM_NAMES}
+
+    for name in PROBLEM_NAMES:
+        np.random.seed(SEED_TRANSFORM)
+        problem = BenchmarkFactory.create(name, DIM)
+        for strat in STRATEGIES:
+            f_reps, h_reps = [], []
+            for rep in range(N_REPETITIONS):
+                np.random.seed(rep)
+                woa = WhaleOptimizationAlgorithm(problem, best_params_woa['pop_size'], MAX_ITER)
+                _, score, history = woa.optimize(b=best_params_woa['b'], 
+                                                 p_switch=best_params_woa['p'], 
+                                                 strategy=strat)
+                f_reps.append(score)
+                h_reps.append(history)
+            results_strat_woa[strat].append(np.mean(f_reps))
+            conv_strat_woa[name][strat] = np.mean(h_reps, axis=0)
+            raw_strat_data_woa[name][strat] = f_reps
+
+    # Save WOA Strategy metrics
+    calculate_and_save_metrics(raw_strat_data_woa, PROBLEM_NAMES, STRATEGIES, os.path.join(STRAT_OUTPUT_DIR_WOA, "strategy_metrics.csv"))
+
+    # WOA Strategy Statistical Validation
+    df_strat_woa = pd.DataFrame(results_strat_woa, index=PROBLEM_NAMES)
+    f_stat_s, p_val_s, ranks_s = compute_friedman_test(df_strat_woa)
+    print(f"WOA Strategy Friedman Result: F = {f_stat_s:.4f}, p = {p_val_s:.4e}")
+
+    if p_val_s < 0.05:
+        print("Significant WOA strategy difference found. Generating CD Diagram")
+        plot_critical_difference_diagram(ranks_s, len(PROBLEM_NAMES), output_dir=STRAT_OUTPUT_DIR_WOA)
+    else:
+        print("No significant WOA strategy differences detected")
+
+    # 3. POPULATION SWEEP (WOA)
+    # Uses best_params_woa for strategy, b, and p. Varies Pop Size.
+    print("\nStep 3 (WOA): Analyzing population scale impact")
+    results_pop_woa = {f"N_{n}": [] for n in POP_SIZES}
+    times_pop_woa = {f"N_{n}": [] for n in POP_SIZES}
+    conv_pop_woa = {p: {f"N_{n}": [] for n in POP_SIZES} for p in PROBLEM_NAMES}
+    raw_pop_data_woa = {p: {f"N_{n}": [] for n in POP_SIZES} for p in PROBLEM_NAMES}
+    
+    target_strat_woa = best_params_woa['strategy']
+
+    for name in PROBLEM_NAMES:
+        np.random.seed(SEED_TRANSFORM)
+        problem = BenchmarkFactory.create(name, DIM)
+        for n in POP_SIZES:
+            f_reps, t_reps, h_reps = [], [], []
+            for rep in range(N_REPETITIONS):
+                np.random.seed(rep)
+                woa = WhaleOptimizationAlgorithm(problem, n, MAX_ITER)
+                start_t = time.process_time()
+                _, score, history = woa.optimize(b=best_params_woa['b'], 
+                                                 p_switch=best_params_woa['p'], 
+                                                 strategy=target_strat_woa)
+                t_reps.append(time.process_time() - start_t)
+                f_reps.append(score)
+                h_reps.append(history)
+            
+            results_pop_woa[f"N_{n}"].append(np.mean(f_reps))
+            times_pop_woa[f"N_{n}"].append(np.mean(t_reps))
+            conv_pop_woa[name][f"N_{n}"] = np.mean(h_reps, axis=0)
+            raw_pop_data_woa[name][f"N_{n}"] = f_reps
+
+    # Save WOA Population metrics
+    calculate_and_save_metrics(raw_pop_data_woa, PROBLEM_NAMES, [f"N_{n}" for n in POP_SIZES], os.path.join(POP_OUTPUT_DIR_WOA, "population_metrics.csv"))
+
+    # WOA Population Statistical Validation
+    df_pop_woa = pd.DataFrame(results_pop_woa, index=PROBLEM_NAMES)
+    f_stat_p, p_val_p, ranks_p = compute_friedman_test(df_pop_woa)
+    print(f"WOA Population Friedman Result: F = {f_stat_p:.4f}, p = {p_val_p:.4e}")
+
+    if p_val_p < 0.05:
+        print("Significant WOA population difference found. Generating CD Diagram")
+        plot_critical_difference_diagram(ranks_p, len(PROBLEM_NAMES), output_dir=POP_OUTPUT_DIR_WOA)
+
+    # 4. WOA VISUALIZATIONS
+    print("\nStep 4 (WOA): Generating plots")
+    
+    # Trade-off
+    plt.figure(figsize=(10, 6))
+    avg_fit_woa = [np.mean(results_pop_woa[f"N_{n}"]) for n in POP_SIZES]
+    avg_time_woa = [np.mean(times_pop_woa[f"N_{n}"]) for n in POP_SIZES]
+    plt.plot(avg_time_woa, avg_fit_woa, '-o', color='darkblue', lw=2, label='Population Scale Trend')
+    for i, n in enumerate(POP_SIZES):
+        plt.annotate(f"N={n}", (avg_time_woa[i], avg_fit_woa[i]), xytext=(5, 5), textcoords="offset points")
+    plt.yscale('symlog', linthresh=1e-2)
+    plt.title("WOA Resource Trade-off")
+    plt.xlabel("Mean CPU Time (s)")
+    plt.ylabel("Mean Fitness Value")
+    plt.grid(True, alpha=0.3)
+    plt.savefig(os.path.join(POP_OUTPUT_DIR_WOA, "tradeoff_line_trend.png"))
+    plt.close()
+
+    # Population Convergence
+    for name in PROBLEM_NAMES:
+        plt.figure(figsize=(9, 6))
+        vals = np.concatenate([conv_pop_woa[name][f"N_{n}"] for n in POP_SIZES])
+        for n in POP_SIZES:
+            plt.plot(conv_pop_woa[name][f"N_{n}"], label=f"N={n}")
+        plt.title(f"WOA Convergence by Population: {name.capitalize()}")
+        plt.xlabel("Iteration")
+        plt.ylabel("Fitness Score")
+        if name.lower() == 'michalewicz': plt.yscale('linear')
+        elif np.any(vals <= 0): plt.yscale('symlog', linthresh=1e-2)
+        else: plt.yscale('log')
+        plt.legend()
+        plt.grid(True, which="both", alpha=0.2)
+        plt.savefig(os.path.join(POP_OUTPUT_DIR_WOA, f"pop_conv_{name}.png"))
+        plt.close()
+
+    # Strategy Convergence
+    for name in PROBLEM_NAMES:
+        plt.figure(figsize=(9, 6))
+        vals = np.concatenate([conv_strat_woa[name][strat] for strat in STRATEGIES])
+        for strat in STRATEGIES:
+            plt.plot(conv_strat_woa[name][strat], label=strat)
+        plt.title(f"WOA Strategy Convergence: {name.capitalize()}")
+        plt.xlabel("Iteration")
+        plt.ylabel("Fitness Score")
+        if name.lower() == 'michalewicz': plt.yscale('linear')
+        elif np.any(vals <= 0): plt.yscale('symlog', linthresh=1e-2)
+        else: plt.yscale('log')
+        plt.legend()
+        plt.grid(True, which="both", alpha=0.3)
+        plt.savefig(os.path.join(STRAT_OUTPUT_DIR_WOA, f"conv_{name}.png"))
+        plt.close()
+
+    # Global Efficiency Plots (WOA)
+    # Pop
+    plt.figure(figsize=(10, 6))
+    for n in POP_SIZES:
+        norms = []
+        for name in PROBLEM_NAMES:
+            h = np.array(conv_pop_woa[name][f"N_{n}"])
+            h_min, h_max = h.min(), h.max()
+            norms.append((h - h_min) / (h_max - h_min + 1e-12) if h_max > h_min else np.zeros_like(h))
+        plt.plot(np.mean(norms, axis=0), label=f"N={n}")
+    plt.title("WOA Normalized Global Efficiency (Population)")
+    plt.legend()
+    plt.savefig(os.path.join(POP_OUTPUT_DIR_WOA, "global_pop_efficiency.png"))
+    plt.close()
+
+    # Strat
+    plt.figure(figsize=(10, 6))
+    for strat in STRATEGIES:
+        norms = []
+        for name in PROBLEM_NAMES:
+            h = np.array(conv_strat_woa[name][strat])
+            h_min, h_max = h.min(), h.max()
+            norms.append((h - h_min) / (h_max - h_min + 1e-12) if h_max > h_min else np.zeros_like(h))
+        plt.plot(np.mean(norms, axis=0), label=strat, lw=2.5)
+    plt.title("WOA Normalized Global Efficiency (Strategy)")
+    plt.legend()
+    plt.savefig(os.path.join(STRAT_OUTPUT_DIR_WOA, "global_strategy_efficiency.png"))
+    plt.close()
+
+    print("All WOA tasks finished. Results saved in 'graphics/WOA/'")
 
 if __name__ == "__main__":
     main()

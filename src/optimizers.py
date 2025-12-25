@@ -114,48 +114,97 @@ class GreyWolfOptimizer(SwarmOptimizer):
 
 class WhaleOptimizationAlgorithm(SwarmOptimizer):
     def _update_a(self, t, strategy='linear'):
+        """
+        Calculates decay coefficient 'a'.
+        """
         T = self.max_iter
         if strategy == 'linear':
             return 2 - 2 * (t / T)
-        return 2 * (1 - t / T)
+        if strategy == 'exp':
+            return 2 * np.exp(-3 * t / T)
+        if strategy == 'log':
+            return 2 * np.log10(1 + (10 - 1) * (1 - t / T))
+        if strategy == 'sin':
+            return 2 * np.cos((np.pi / 2) * (t / T))
+        return 0
 
     def optimize(self, b=1, p_switch=0.5, strategy='linear'):
         self._initialize()
         convergence_history = []
+        
+        # Initialize best solution
         best_pos = np.zeros(self.dim)
         best_score = np.inf
 
         for t in range(self.max_iter):
+            # 1. CLIP: Keep agents inside bounds
+            self.population = np.clip(self.population, self.bounds[0], self.bounds[1])
+
+            # 2. FITNESS EVALUATION
+            current_fitness = np.zeros(self.pop_size)
             for i in range(self.pop_size):
-                self.population[i] = np.clip(self.population[i], self.bounds[0], self.bounds[1])
-                fitness = self.problem.compute(self.population[i])
-                
-                if fitness < best_score:
-                    best_score = fitness
-                    best_pos = self.population[i].copy()
+                current_fitness[i] = self.problem.compute(self.population[i])
+            
+            # Update global best
+            min_fitness_idx = np.argmin(current_fitness)
+            if current_fitness[min_fitness_idx] < best_score:
+                best_score = current_fitness[min_fitness_idx]
+                best_pos = self.population[min_fitness_idx].copy()
 
             convergence_history.append(best_score)
+
+            # 3. POSITION UPDATE (Vectorized)
             a = self._update_a(t, strategy)
+
+            # Generate random params for the whole population
+            # Shape (N, 1) allows broadcasting across dimensions
+            r1 = np.random.random((self.pop_size, 1))
+            r2 = np.random.random((self.pop_size, 1))
             
-            for i in range(self.pop_size):
-                r = np.random.random()
-                A = 2 * a * r - a
-                C = 2 * np.random.random()
-                p = np.random.random()
-                l = np.random.uniform(-1, 1)
+            A = 2 * a * r1 - a
+            C = 2 * r2
+            
+            p = np.random.random((self.pop_size, 1))
+            l = np.random.uniform(-1, 1, (self.pop_size, 1))
+
+            # --- LOGICAL MASKS (Who does what?) ---
+            
+            # Condition 1: Spiral (Bubble-net attack) -> p >= 0.5
+            mask_spiral = (p >= p_switch).flatten()
+
+            # Condition 2: Linear (Search or Encircle) -> p < 0.5
+            mask_linear = (p < p_switch).flatten()
+            
+            # 2.1: Encircle (Exploitation) -> |A| < 1
+            mask_encircle = mask_linear & (np.abs(A).flatten() < 1)
+            
+            # 2.2: Search (Exploration) -> |A| >= 1
+            mask_search = mask_linear & (np.abs(A).flatten() >= 1)
+
+            # --- APPLY MOVEMENTS ---
+
+            # A) Spiral Update
+            if np.any(mask_spiral):
+                dist_to_best = np.abs(best_pos - self.population[mask_spiral])
+                # Formula: D' * e^(bl) * cos(2pi*l) + best
+                spiral_move = dist_to_best * np.exp(b * l[mask_spiral]) * np.cos(2 * np.pi * l[mask_spiral])
+                self.population[mask_spiral] = spiral_move + best_pos
+
+            # B) Encircling Update
+            if np.any(mask_encircle):
+                # Formula: best - A * |C * best - current|
+                D = np.abs(C[mask_encircle] * best_pos - self.population[mask_encircle])
+                self.population[mask_encircle] = best_pos - A[mask_encircle] * D
+
+            # C) Search Update (Random exploration)
+            if np.any(mask_search):
+                count_search = np.sum(mask_search)
+                # Pick random whales for reference
+                rand_indices = np.random.randint(0, self.pop_size, size=count_search)
+                X_rand = self.population[rand_indices]
                 
-                if p < p_switch:
-                    if np.abs(A) < 1:
-                        D = np.abs(C * best_pos - self.population[i])
-                        self.population[i] = best_pos - A * D
-                    else:
-                        rand_idx = np.random.randint(0, self.pop_size)
-                        x_rand = self.population[rand_idx]
-                        D = np.abs(C * x_rand - self.population[i])
-                        self.population[i] = x_rand - A * D
-                else:
-                    distance_to_best = np.abs(best_pos - self.population[i])
-                    spiral = distance_to_best * np.exp(b * l) * np.cos(2 * np.pi * l)
-                    self.population[i] = spiral + best_pos
+                # Formula: X_rand - A * |C * X_rand - current|
+                D = np.abs(C[mask_search] * X_rand - self.population[mask_search])
+                self.population[mask_search] = X_rand - A[mask_search] * D
 
         return best_pos, best_score, convergence_history
