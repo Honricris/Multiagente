@@ -64,13 +64,12 @@ def plot_critical_difference_diagram(average_ranks, n_datasets, alpha=0.05, outp
     names = sorted_ranks.index
     values = sorted_ranks.values
 
-    # Increased figure size for clarity
-    plt.figure(figsize=(12, 5))
+    plt.figure(figsize=(14, 6))
     ax = plt.gca()
     
     # Ranks: 1 (best) on the right
-    ax.set_xlim(max(k, values.max()) + 0.5, 0.5) 
-    ax.set_ylim(-1.5, 1.2)
+    ax.set_xlim(max(k, values.max()) + 0.7, 0.3) 
+    ax.set_ylim(-2.0, 1.5)
     
     # Main axis
     plt.axhline(0, color='black', lw=1.5)
@@ -81,23 +80,22 @@ def plot_critical_difference_diagram(average_ranks, n_datasets, alpha=0.05, outp
     # Plot algorithms and their ranks with dynamic staggered heights
     for i, (name, rank) in enumerate(zip(names, values)):
         # Cycles through 3 different vertical levels to prevent text overlap
-        y_level = -0.3 - (i % 3) * 0.3 
+        y_level = -0.4 - (i % 3) * 0.45 
         
         plt.plot([rank, rank], [0, y_level], color='black', lw=1, ls='--')
-        plt.text(rank, y_level - 0.05, f"{name} ({rank:.2f})", 
-                 ha='right', va='top', rotation=35, fontsize=10, fontweight='bold')
+        plt.text(rank, y_level - 0.1, f"{name} ({rank:.2f})", 
+                 ha='center', va='top', rotation=30, fontsize=10, fontweight='bold')
 
     # Plot CD bar at the top
     cd_x_start = max(ticks)
-    plt.plot([cd_x_start, cd_x_start - cd], [0.8, 0.8], color='red', lw=4)
-    plt.text(cd_x_start - cd/2, 0.9, "CD", color='red', ha='center', fontweight='bold')
+    plt.plot([cd_x_start, cd_x_start - cd], [1.1, 1.1], color='red', lw=4)
+    plt.text(cd_x_start - cd/2, 1.2, "CD", color='red', ha='center', fontweight='bold')
 
     # Connect groups that are NOT significantly different (Blue lines)
     for i in range(k):
         for j in range(i + 1, k):
             if abs(values[i] - values[j]) <= cd:
-                # Vertical offset for each connection line to keep them distinct
-                plt.plot([values[i], values[j]], [0.2 + (i*0.07), 0.2 + (i*0.07)], 
+                plt.plot([values[i], values[j]], [0.25 + (i*0.1), 0.25 + (i*0.1)], 
                          color='blue', lw=3, alpha=0.5)
 
     plt.axis('off')
