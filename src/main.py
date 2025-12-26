@@ -2,38 +2,37 @@ import numpy as np
 import pandas as pd
 import optuna
 import matplotlib.pyplot as plt
+from matplotlib.colors import LogNorm
 import os
 import time
 import optuna.visualization as vis 
 import seaborn as sns 
 from benchmarks import BenchmarkFactory
 from optimizers import GreyWolfOptimizer, WhaleOptimizationAlgorithm 
-# Importamos todas las utilidades estadísticas necesarias
 from stats_utils import compute_friedman_test, plot_critical_difference_diagram, compute_wilcoxon_test, plot_boxplot_comparison
 
-# Global variables for experiment control
+# Configuración global de experimentos
 DIM = 10 
 MAX_ITER = 50 
 N_REPETITIONS = 5 
 OPTUNA_TRIALS = 20 
 SEED_TRANSFORM = 42 
 
-# --- OPTIMIZATION RANGES (GLOBAL VARIABLES) ---
-# GWO Parameters
+# Rangos de optimización para GWO
 GWO_POP_RANGE = (10, 80)
 
-# WOA Parameters
+# Parámetros WOA
 WOA_POP_RANGE = (10, 80)
-WOA_B_RANGE = (0.5, 2.0)      # Spiral shape constant range
-WOA_P_RANGE = (0.4, 0.6)      # Mechanism probability switch range
+WOA_B_RANGE = (0.5, 2.0)
+WOA_P_RANGE = (0.4, 0.6)
 
-# Discrete values for Parameter Sweeps
+# Valores para barrido de parámetros
 STRATEGIES = ['linear', 'exp', 'log', 'sin']
 POP_SIZES = [10, 20, 40, 80, 160]
 WOA_B_VALUES = [0.5, 1.0, 1.5, 2.0]
 WOA_P_VALUES = [0.4, 0.5, 0.6]
 
-# Success rate configuration
+# Umbrales de éxito y óptimos conocidos
 SUCCESS_THRESHOLD = 1e-2
 KNOWN_OPTIMA = {
     'sphere': 0.0, 'rosenbrock': 0.0, 'rastrigin': 0.0, 'schwefel': 0.0,
@@ -41,35 +40,32 @@ KNOWN_OPTIMA = {
     'dixon_price': 0.0, 'levy': 0.0
 }
 
-# Directory structure
+# Estructura de directorios
 BASE_GRAPHICS_DIR_GWO = "graphics/GWO"
 STRAT_OUTPUT_DIR_GWO = os.path.join(BASE_GRAPHICS_DIR_GWO, "Strategies")
 POP_OUTPUT_DIR_GWO = os.path.join(BASE_GRAPHICS_DIR_GWO, "Population")
 
-# New WOA Directories
 BASE_GRAPHICS_DIR_WOA = "graphics/WOA"
 STRAT_OUTPUT_DIR_WOA = os.path.join(BASE_GRAPHICS_DIR_WOA, "Strategies")
 POP_OUTPUT_DIR_WOA = os.path.join(BASE_GRAPHICS_DIR_WOA, "Population")
 B_OUTPUT_DIR_WOA = os.path.join(BASE_GRAPHICS_DIR_WOA, "Parameter_b")
 P_OUTPUT_DIR_WOA = os.path.join(BASE_GRAPHICS_DIR_WOA, "Parameter_p")
 
-# Comparison Directory
 COMPARISON_DIR = "graphics/Comparison"
+TRAJECTORY_DIR = "graphics/Trajectories"
 
-# Benchmark problems to analyze
 PROBLEM_NAMES = [
     'sphere', 'rosenbrock', 'rastrigin', 'schwefel', 'ackley', 
     'griewank', 'michalewicz', 'zakharov', 'dixon_price', 'levy'
 ]
 
 def calculate_and_save_metrics(raw_data, problem_list, config_list, output_path):
-    """Computes Mean, Median, STD, and Success Rate relative to known optima"""
+    # Calcula promedios, medianas, desviación y tasa de éxito
     summary = []
     for name in problem_list:
         target = KNOWN_OPTIMA.get(name, 0.0)
         for config in config_list:
             vals = np.array(raw_data[name][config])
-            # Success is defined as distance to the global minimum
             successes = np.abs(vals - target) < SUCCESS_THRESHOLD
             summary.append({
                 'Problem': name.capitalize(),
@@ -82,7 +78,7 @@ def calculate_and_save_metrics(raw_data, problem_list, config_list, output_path)
     pd.DataFrame(summary).to_csv(output_path, index=False)
 
 def gwo_global_objective(trial):
-    """Optuna objective function to optimize parameters for GWO."""
+    # Objetivo Optuna para parámetros de GWO
     pop_size = trial.suggest_int('pop_size', GWO_POP_RANGE[0], GWO_POP_RANGE[1])
     strategy = trial.suggest_categorical('strategy', STRATEGIES)
     scores = []
@@ -94,14 +90,14 @@ def gwo_global_objective(trial):
         for r in range(3):
             np.random.seed(trial.number * 100 + r)
             gwo = GreyWolfOptimizer(problem, pop_size, MAX_ITER)
-            _, score, _ = gwo.optimize(strategy=strategy)
+            _, score, _, _ = gwo.optimize(strategy=strategy)
             reps.append(score)
         scores.append(np.mean(reps))
         
     return np.mean(scores)
 
 def woa_global_objective(trial):
-    """Optuna objective function to optimize parameters globally for WOA."""
+    # Objetivo Optuna para parámetros de WOA
     pop_size = trial.suggest_int('pop_size', WOA_POP_RANGE[0], WOA_POP_RANGE[1])
     strategy = trial.suggest_categorical('strategy', STRATEGIES)
     b_val = trial.suggest_float('b', WOA_B_RANGE[0], WOA_B_RANGE[1])
@@ -116,27 +112,91 @@ def woa_global_objective(trial):
         for r in range(3):
             np.random.seed(trial.number * 100 + r)
             woa = WhaleOptimizationAlgorithm(problem, pop_size, MAX_ITER)
-            _, score, _ = woa.optimize(b=b_val, p_switch=p_val, strategy=strategy)
+            _, score, _, _ = woa.optimize(b=b_val, p_switch=p_val, strategy=strategy)
             reps.append(score)
         scores.append(np.mean(reps))
         
     return np.mean(scores)
 
+
+
+def plot_trajectory_comparison(problem, gwo_pos_hist, woa_pos_hist, name, save_path):
+    def get_global_best_progress(pos_history):
+        z1_traj = []
+        fit_traj = []
+        
+        current_best_fit = np.inf
+        current_best_z = None
+        
+        for pop in pos_history:
+            # Evaluamos la población actual para encontrar el mejor
+            scores = [problem.compute(ind) for ind in pop]
+            min_idx = np.argmin(scores)
+            
+            # Actualizamos solo ante mejoras reales del Mejor Global
+            if scores[min_idx] < current_best_fit:
+                current_best_fit = scores[min_idx]
+                current_best_z = problem._transform(pop[min_idx])
+            
+            # Guardamos el estado para la trayectoria
+            z1_traj.append(current_best_z[0])
+            fit_traj.append(current_best_fit)
+            
+        return np.array(z1_traj), np.array(fit_traj)
+
+    # Procesamos las trayectorias de progreso
+    z1_gwo, fit_gwo = get_global_best_progress(gwo_pos_hist)
+    z1_woa, fit_woa = get_global_best_progress(woa_pos_hist)
+
+    plt.figure(figsize=(10, 7))
+    
+    # Dibujamos el progreso de GWO
+    plt.plot(z1_gwo, fit_gwo, color='red', label='GWO Progress', 
+             alpha=0.8, lw=2, marker='o', markevery=max(1, len(z1_gwo)//10))
+    
+    # Dibujamos el progreso de WOA
+    plt.plot(z1_woa, fit_woa, color='blue', label='WOA Progress', 
+             alpha=0.8, lw=2, ls='--', marker='^', markevery=max(1, len(z1_woa)//10))
+
+    # Resaltamos los puntos finales
+    plt.scatter(float(z1_gwo[-1]), float(fit_gwo[-1]), color='red', 
+                edgecolor='black', marker='X', s=150, zorder=5, label='GWO Final')
+    plt.scatter(float(z1_woa[-1]), float(fit_woa[-1]), color='blue', 
+                edgecolor='black', marker='X', s=150, zorder=5, label='WOA Final')
+
+    plt.title(f"Progreso del Mejor Global: {name.capitalize()}\n(Trayectoria en Espacio Z)", 
+              fontsize=12, fontweight='bold')
+    plt.xlabel("Dimensión Principal ($z_1$)")
+    plt.ylabel("Mejor Fitness Encontrado ($f_{min}$)")
+    
+    # Lógica de escala adaptativa
+    all_fits = np.concatenate([fit_gwo, fit_woa])
+    if name.lower() == 'michalewicz' or np.any(all_fits <= 0):
+        # Usamos escala lineal para funciones con valores negativos
+        plt.yscale('linear')
+    else:
+        # Usamos escala logarítmica para funciones estrictamente positivas
+        plt.yscale('log')
+    
+    plt.grid(True, which="both", alpha=0.3)
+    plt.legend()
+    
+    plt.tight_layout()
+    plt.savefig(save_path, dpi=300)
+    plt.close()
+
+
 def main():
-    # Initialize output directory structure
     for d in [STRAT_OUTPUT_DIR_GWO, POP_OUTPUT_DIR_GWO, 
               STRAT_OUTPUT_DIR_WOA, POP_OUTPUT_DIR_WOA, 
-              B_OUTPUT_DIR_WOA, P_OUTPUT_DIR_WOA, COMPARISON_DIR]:
+              B_OUTPUT_DIR_WOA, P_OUTPUT_DIR_WOA, COMPARISON_DIR, TRAJECTORY_DIR]:
         os.makedirs(d, exist_ok=True)
 
-    # ==========================================
-    # PART 1: GREY WOLF OPTIMIZER (GWO) STUDY
-    # ==========================================
     print("="*60)
     print("STARTING GWO ANALYSIS")
     print("="*60)
 
-    # 1. OPTUNA PARAMETER TUNING (GWO)
+    # 1. OPTUNA TUNING (GWO)
     print("Step 1 (GWO): Finding optimal global parameters using Optuna")
     study_gwo = optuna.create_study(direction='minimize')
     study_gwo.optimize(gwo_global_objective, n_trials=OPTUNA_TRIALS)
@@ -162,7 +222,7 @@ def main():
             for rep in range(N_REPETITIONS):
                 np.random.seed(rep)
                 gwo = GreyWolfOptimizer(problem, best_params_gwo['pop_size'], MAX_ITER)
-                _, score, history = gwo.optimize(strategy=strat)
+                _, score, history, _ = gwo.optimize(strategy=strat)
                 f_reps.append(score)
                 h_reps.append(history)
             results_strat_gwo[strat].append(np.mean(f_reps))
@@ -197,7 +257,7 @@ def main():
                 np.random.seed(rep)
                 gwo = GreyWolfOptimizer(problem, n, MAX_ITER)
                 start_t = time.process_time()
-                _, score, history = gwo.optimize(strategy=target_strat_gwo)
+                _, score, history, _ = gwo.optimize(strategy=target_strat_gwo)
                 t_reps.append(time.process_time() - start_t)
                 f_reps.append(score)
                 h_reps.append(history)
@@ -220,7 +280,6 @@ def main():
     # 4. GWO VISUALIZATIONS
     print("\nStep 4 (GWO): Generating plots")
     
-    # Trade-off
     plt.figure(figsize=(10, 6))
     avg_fit_gwo = [np.mean(results_pop_gwo[f"N_{n}"]) for n in POP_SIZES]
     avg_time_gwo = [np.mean(times_pop_gwo[f"N_{n}"]) for n in POP_SIZES]
@@ -235,7 +294,6 @@ def main():
     plt.savefig(os.path.join(POP_OUTPUT_DIR_GWO, "tradeoff_line_trend.png"))
     plt.close()
 
-    # Convergence
     for name in PROBLEM_NAMES:
         plt.figure(figsize=(9, 6))
         vals = np.concatenate([conv_pop_gwo[name][f"N_{n}"] for n in POP_SIZES])
@@ -294,15 +352,11 @@ def main():
     plt.savefig(os.path.join(STRAT_OUTPUT_DIR_GWO, "global_strategy_efficiency.png"))
     plt.close()
 
-
-    # ==========================================
-    # PART 2: WHALE OPTIMIZATION ALGORITHM (WOA) STUDY
-    # ==========================================
     print("\n" + "="*60)
     print("STARTING WOA ANALYSIS")
     print("="*60)
 
-    # 1. OPTUNA PARAMETER TUNING (WOA)
+    # 1. OPTUNA TUNING (WOA)
     print("Step 1 (WOA): Finding optimal global parameters using Optuna")
     study_woa = optuna.create_study(direction='minimize')
     study_woa.optimize(woa_global_objective, n_trials=OPTUNA_TRIALS)
@@ -328,7 +382,7 @@ def main():
             for rep in range(N_REPETITIONS):
                 np.random.seed(rep)
                 woa = WhaleOptimizationAlgorithm(problem, best_params_woa['pop_size'], MAX_ITER)
-                _, score, history = woa.optimize(b=best_params_woa['b'], 
+                _, score, history, _ = woa.optimize(b=best_params_woa['b'], 
                                                  p_switch=best_params_woa['p'], 
                                                  strategy=strat)
                 f_reps.append(score)
@@ -365,7 +419,7 @@ def main():
                 np.random.seed(rep)
                 woa = WhaleOptimizationAlgorithm(problem, n, MAX_ITER)
                 start_t = time.process_time()
-                _, score, history = woa.optimize(b=best_params_woa['b'], 
+                _, score, history, _ = woa.optimize(b=best_params_woa['b'], 
                                                  p_switch=best_params_woa['p'], 
                                                  strategy=target_strat_woa)
                 t_reps.append(time.process_time() - start_t)
@@ -401,8 +455,7 @@ def main():
             for rep in range(N_REPETITIONS):
                 np.random.seed(rep)
                 woa = WhaleOptimizationAlgorithm(problem, best_params_woa['pop_size'], MAX_ITER)
-                # Fix others, vary b
-                _, score, history = woa.optimize(b=b_val, 
+                _, score, history, _ = woa.optimize(b=b_val, 
                                                  p_switch=best_params_woa['p'], 
                                                  strategy=target_strat_woa)
                 f_reps.append(score)
@@ -433,8 +486,7 @@ def main():
             for rep in range(N_REPETITIONS):
                 np.random.seed(rep)
                 woa = WhaleOptimizationAlgorithm(problem, best_params_woa['pop_size'], MAX_ITER)
-                # Fix others, vary p
-                _, score, history = woa.optimize(b=best_params_woa['b'], 
+                _, score, history, _ = woa.optimize(b=best_params_woa['b'], 
                                                  p_switch=p_val, 
                                                  strategy=target_strat_woa)
                 f_reps.append(score)
@@ -532,7 +584,6 @@ def main():
         plt.savefig(os.path.join(P_OUTPUT_DIR_WOA, f"param_p_conv_{name}.png"))
         plt.close()
 
-    # WOA Global Efficiency Plots
     plt.figure(figsize=(10, 6))
     for n in POP_SIZES:
         norms = []
@@ -585,9 +636,7 @@ def main():
     plt.savefig(os.path.join(P_OUTPUT_DIR_WOA, "global_param_p_efficiency.png"))
     plt.close()
 
-    # ==========================================
-    # PART 7: FINAL COMPARATIVE ANALYSIS (GWO vs WOA)
-    # ==========================================
+    # 7. FINAL COMPARATIVE ANALYSIS
     print("\n" + "="*60)
     print("STARTING FINAL COMPARISON: GWO vs WOA")
     print("="*60)
@@ -607,23 +656,21 @@ def main():
         gwo_reps_score, gwo_reps_time, gwo_histories = [], [], []
         woa_reps_score, woa_reps_time, woa_histories = [], [], []
         
-        # GWO Execution
         for rep in range(N_REPETITIONS):
             np.random.seed(rep)
             gwo = GreyWolfOptimizer(problem, best_params_gwo['pop_size'], MAX_ITER)
             start = time.process_time()
-            _, score, history = gwo.optimize(strategy=best_params_gwo['strategy'])
+            _, score, history, _ = gwo.optimize(strategy=best_params_gwo['strategy'])
             end = time.process_time()
             gwo_reps_score.append(score)
             gwo_reps_time.append(end - start)
             gwo_histories.append(history)
             
-        # WOA Execution
         for rep in range(N_REPETITIONS):
             np.random.seed(rep)
             woa = WhaleOptimizationAlgorithm(problem, best_params_woa['pop_size'], MAX_ITER)
             start = time.process_time()
-            _, score, history = woa.optimize(b=best_params_woa['b'], 
+            _, score, history, _ = woa.optimize(b=best_params_woa['b'], 
                                              p_switch=best_params_woa['p'], 
                                              strategy=best_params_woa['strategy'])
             end = time.process_time()
@@ -631,7 +678,6 @@ def main():
             woa_reps_time.append(end - start)
             woa_histories.append(history)
             
-        # Statistics
         gwo_mean = np.mean(gwo_reps_score)
         woa_mean = np.mean(woa_reps_score)
         gwo_success = np.mean(np.abs(np.array(gwo_reps_score) - target) < SUCCESS_THRESHOLD) * 100
@@ -656,7 +702,6 @@ def main():
             'Winner': winner
         })
         
-        # PLOT 1: HEAD-TO-HEAD CONVERGENCE
         plt.figure(figsize=(8, 6))
         plt.plot(np.mean(gwo_histories, axis=0), label='GWO', color='red', linewidth=2)
         plt.plot(np.mean(woa_histories, axis=0), label='WOA', color='blue', linewidth=2, linestyle='--')
@@ -670,7 +715,6 @@ def main():
         plt.savefig(os.path.join(COMPARISON_DIR, f"compare_conv_{name}.png"))
         plt.close()
         
-        # PLOT 2: PAIRED BOXPLOT (Using updated util function)
         df_box = pd.DataFrame({'GWO': gwo_reps_score, 'WOA': woa_reps_score})
         scale = 'linear' if name.lower() == 'michalewicz' else 'symlog'
         plot_boxplot_comparison(df_box, COMPARISON_DIR, 
@@ -680,53 +724,76 @@ def main():
 
     df_comp = pd.DataFrame(comparison_stats)
     df_comp.to_csv(os.path.join(COMPARISON_DIR, "comparison_summary.csv"), index=False)
-    print(f"Summary table saved to {COMPARISON_DIR}/comparison_summary.csv")
 
-    # Wilcoxon Test
     print("\nPerforming Wilcoxon Signed-Rank Test (Global)...")
     try:
         df_wilcoxon = pd.DataFrame({'GWO': gwo_means_for_wilcoxon, 'WOA': woa_means_for_wilcoxon}, index=PROBLEM_NAMES)
         stat, p_value, _ = compute_wilcoxon_test(df_wilcoxon)
-        print(f"Wilcoxon Statistic: {stat}")
-        print(f"P-Value: {p_value:.4e}")
+        print(f"Wilcoxon Statistic: {stat}, P-Value: {p_value:.4e}")
         
-        if p_value < 0.05: print("Conclusion: Significant difference found between GWO and WOA.")
-        else: print("Conclusion: No significant difference detected between algorithms.")
-            
         with open(os.path.join(COMPARISON_DIR, "wilcoxon_results.txt"), "w") as f:
-            f.write(f"Wilcoxon Statistic: {stat}\n")
-            f.write(f"P-Value: {p_value:.4e}\n")
+            f.write(f"Wilcoxon Statistic: {stat}\nP-Value: {p_value:.4e}\n")
             f.write("Significant: Yes" if p_value < 0.05 else "Significant: No")
     except Exception as e:
         print(f"Error calculating Wilcoxon test: {e}")
 
-    # Global Scatter Plot
+    # Gráficos de comparación final
     plt.figure(figsize=(10, 6))
-    plt.scatter(global_gwo_times, global_gwo_fits, color='red', label='GWO', marker='o', s=100, alpha=0.7)
-    plt.scatter(global_woa_times, global_woa_fits, color='blue', label='WOA', marker='^', s=100, alpha=0.7)
-    plt.title("Global Efficiency Trade-off: GWO vs WOA")
-    plt.xlabel("Mean CPU Time (s)")
-    plt.ylabel("Mean Fitness (Log Scale)")
+    plt.scatter(global_gwo_times, global_gwo_fits, color='red', label='GWO', marker='o', s=80, alpha=0.7)
+    plt.scatter(global_woa_times, global_woa_fits, color='blue', label='WOA', marker='^', s=80, alpha=0.7)
+    for i in range(len(PROBLEM_NAMES)):
+        plt.annotate("", xy=(global_woa_times[i], global_woa_fits[i]), 
+                     xytext=(global_gwo_times[i], global_gwo_fits[i]),
+                     arrowprops=dict(arrowstyle="->", color="gray", alpha=0.5, lw=1.5))
     plt.yscale('symlog', linthresh=1e-2)
+    plt.title("Global Trade-off Movement (GWO -> WOA)")
+    plt.xlabel("Mean CPU Time (s)")
+    plt.ylabel("Mean Fitness (Symlog)")
     plt.legend()
     plt.grid(True, alpha=0.3)
     plt.savefig(os.path.join(COMPARISON_DIR, "global_tradeoff_comparison.png"))
     plt.close()
 
-    # Global Boxplot
-    # Normalize data for global comparison
-    norm_data = []
+    rpd_data = []
     for i in range(len(PROBLEM_NAMES)):
-        row = np.array([gwo_means_for_wilcoxon[i], woa_means_for_wilcoxon[i]])
-        norm_row = (row - row.min()) / (row.max() - row.min() + 1e-12)
-        norm_data.append(norm_row)
-    df_norm = pd.DataFrame(norm_data, columns=['GWO', 'WOA'], index=PROBLEM_NAMES)
-    plot_boxplot_comparison(df_norm, COMPARISON_DIR, 
-                            filename="global_boxplot_normalized.png", 
-                            title="Normalized Performance Distribution (Lower is Better)", 
-                            y_scale='linear')
+        g_val, w_val = gwo_means_for_wilcoxon[i], woa_means_for_wilcoxon[i]
+        denom = abs(g_val) if abs(g_val) > 1e-9 else 1e-9
+        rpd_data.append(((w_val - g_val) / denom) * 100)
 
-    print("All comparison tasks finished successfully.")
+    plt.figure(figsize=(8, 6))
+    sns.boxplot(y=rpd_data, color='lightblue', width=0.4)
+    plt.axhline(0, color='red', linestyle='--', label="GWO Baseline")
+    plt.title("Performance Deviation of WOA relative to GWO")
+    plt.ylabel("RPD (%) (>0 means WOA is worse)")
+    plt.legend()
+    plt.savefig(os.path.join(COMPARISON_DIR, "global_boxplot_normalized.png"))
+    plt.close()
+
+    # --- NUEVO BLOQUE: EJECUCIÓN 2D Y TRAYECTORIAS ---
+    print("\n" + "="*60)
+    print("STARTING 2D TRAJECTORY VISUALIZATION")
+    print("="*60)
+    
+    for name in [
+    'sphere', 'rosenbrock', 'rastrigin', 'schwefel', 'ackley', 
+    'griewank', 'michalewicz', 'zakharov', 'dixon_price', 'levy']:
+        print(f"Generating 2D trajectory for {name}...")
+        np.random.seed(SEED_TRANSFORM)
+        problem_2d = BenchmarkFactory.create(name, DIM)
+        
+        gwo_2d = GreyWolfOptimizer(problem_2d, 20, MAX_ITER)
+        _, _, _, gwo_pos_hist = gwo_2d.optimize(strategy=best_params_gwo['strategy'])
+        
+        woa_2d = WhaleOptimizationAlgorithm(problem_2d, 20, MAX_ITER)
+        _, _, _, woa_pos_hist = woa_2d.optimize(b=best_params_woa['b'], 
+                                              p_switch=best_params_woa['p'], 
+                                              strategy=best_params_woa['strategy'])
+        
+        plot_trajectory_comparison(problem_2d, gwo_pos_hist, woa_pos_hist, name, 
+                                 os.path.join(TRAJECTORY_DIR, f"trajectory_{name}.png"))
+                                 
+
+    print("All tasks finished successfully.")
 
 if __name__ == "__main__":
     main()
