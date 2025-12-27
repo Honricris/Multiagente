@@ -11,36 +11,47 @@ from benchmarks import BenchmarkFactory
 from optimizers import GreyWolfOptimizer, WhaleOptimizationAlgorithm 
 from stats_utils import compute_friedman_test, plot_critical_difference_diagram, compute_wilcoxon_test, plot_boxplot_comparison
 
-# Configuración global de experimentos
-DIM = 10 
-MAX_ITER = 50 
-N_REPETITIONS = 5 
-OPTUNA_TRIALS = 20 
-SEED_TRANSFORM = 42 
+# --- Global Experiment Configuration ---
+DIM = 30 # Search space dimensionality
+MAX_ITER = 500 # Maximum iterations per optimization run
+N_REPETITIONS = 30 # Number of independent runs for statistical significance
+OPTUNA_TRIALS = 50 # Number of hyperparameter optimization trials
+SEED_TRANSFORM = 42 # Seed for benchmark objective function transformations
 
-# Rangos de optimización para GWO
-GWO_POP_RANGE = (10, 80)
+# --- GWO Optimization Ranges ---
+GWO_POP_RANGE = (10, 200) # Population size range for GWO tuning
 
-# Parámetros WOA
-WOA_POP_RANGE = (10, 80)
-WOA_B_RANGE = (0.5, 2.0)
-WOA_P_RANGE = (0.4, 0.6)
+# --- WOA Parameters ---
+WOA_POP_RANGE = (10, 200) # Population size range for WOA tuning
+WOA_B_RANGE = (0.5, 3.0) # Range for the constant b in spiral update
+WOA_P_RANGE = (0.2, 0.8) # Range for the probability p switch
 
-# Valores para barrido de parámetros
-STRATEGIES = ['linear', 'exp', 'log', 'sin']
-POP_SIZES = [10, 20, 40, 80, 160]
-WOA_B_VALUES = [0.5, 1.0, 1.5, 2.0]
-WOA_P_VALUES = [0.4, 0.5, 0.6]
+# --- Parameter Sweep Values ---
+STRATEGIES = ['linear', 'exp', 'log', 'sin'] # Convergence parameter decay strategies
+POP_SIZES = [10, 20, 40, 80, 100, 160, 200] # Population sizes for scalability analysis
+WOA_B_VALUES = [0.5, 1.0, 1.5, 2.0, 2.5] # Fixed b values for sensitivity analysis
+WOA_P_VALUES = [0.3, 0.4, 0.5, 0.6, 0.7] # Fixed p values for sensitivity analysis
 
-# Umbrales de éxito y óptimos conocidos
-SUCCESS_THRESHOLD = 1e-2
+# --- Success Thresholds and Known Optima ---
+SUCCESS_THRESHOLDS = {
+    'sphere': 1e-6,
+    'rosenbrock': 1e-4,
+    'rastrigin': 1e-2,
+    'schwefel': 1e-2,
+    'ackley': 1e-3,
+    'griewank': 1e-2,
+    'michalewicz': 1e-1,
+    'zakharov': 1e-5,
+    'dixon_price': 1e-4,
+    'levy': 1e-5
+}
 KNOWN_OPTIMA = {
     'sphere': 0.0, 'rosenbrock': 0.0, 'rastrigin': 0.0, 'schwefel': 0.0,
     'ackley': 0.0, 'griewank': 0.0, 'michalewicz': -9.66015, 'zakharov': 0.0,
     'dixon_price': 0.0, 'levy': 0.0
 }
 
-# Estructura de directorios
+# --- Directory Structure ---
 BASE_GRAPHICS_DIR_GWO = "graphics/GWO"
 STRAT_OUTPUT_DIR_GWO = os.path.join(BASE_GRAPHICS_DIR_GWO, "Strategies")
 POP_OUTPUT_DIR_GWO = os.path.join(BASE_GRAPHICS_DIR_GWO, "Population")
@@ -59,14 +70,34 @@ PROBLEM_NAMES = [
     'griewank', 'michalewicz', 'zakharov', 'dixon_price', 'levy'
 ]
 
+def calculate_xpl_xpt_numeric(pos_history):
+    """Calculates exploration and exploitation percentages based on population diversity"""
+    pos_history = np.array(pos_history)
+    
+    # Measure diversity as average absolute difference from the median
+    medians = np.median(pos_history, axis=1, keepdims=True)
+    div_t = np.mean(np.abs(pos_history - medians), axis=(1, 2))
+    
+    div_max = np.max(div_t) if np.max(div_t) > 0 else 1e-12
+    
+    # Calculate iteration-wise percentages
+    xpl_t = (div_t / div_max) * 100
+    xpt_t = (np.abs(div_t - div_max) / div_max) * 100
+    
+    # Return average values of the entire run
+    return np.mean(xpl_t), np.mean(xpt_t)
+
 def calculate_and_save_metrics(raw_data, problem_list, config_list, output_path):
-    # Calcula promedios, medianas, desviación y tasa de éxito
+    """Calcula promedios, medianas y tasas de éxito usando umbrales específicos"""
     summary = []
     for name in problem_list:
         target = KNOWN_OPTIMA.get(name, 0.0)
+        threshold = SUCCESS_THRESHOLDS.get(name, 1e-2)
+        
         for config in config_list:
             vals = np.array(raw_data[name][config])
-            successes = np.abs(vals - target) < SUCCESS_THRESHOLD
+            successes = np.abs(vals - target) < threshold
+            
             summary.append({
                 'Problem': name.capitalize(),
                 'Config': config,
@@ -78,7 +109,7 @@ def calculate_and_save_metrics(raw_data, problem_list, config_list, output_path)
     pd.DataFrame(summary).to_csv(output_path, index=False)
 
 def gwo_global_objective(trial):
-    # Objetivo Optuna para parámetros de GWO
+    """Optuna objective function for GWO hyperparameter tuning"""
     pop_size = trial.suggest_int('pop_size', GWO_POP_RANGE[0], GWO_POP_RANGE[1])
     strategy = trial.suggest_categorical('strategy', STRATEGIES)
     scores = []
@@ -87,7 +118,7 @@ def gwo_global_objective(trial):
         np.random.seed(SEED_TRANSFORM)
         problem = BenchmarkFactory.create(name, DIM)
         reps = []
-        for r in range(3):
+        for r in range(10):
             np.random.seed(trial.number * 100 + r)
             gwo = GreyWolfOptimizer(problem, pop_size, MAX_ITER)
             _, score, _, _ = gwo.optimize(strategy=strategy)
@@ -97,7 +128,7 @@ def gwo_global_objective(trial):
     return np.mean(scores)
 
 def woa_global_objective(trial):
-    # Objetivo Optuna para parámetros de WOA
+    """Optuna objective function for WOA hyperparameter tuning"""
     pop_size = trial.suggest_int('pop_size', WOA_POP_RANGE[0], WOA_POP_RANGE[1])
     strategy = trial.suggest_categorical('strategy', STRATEGIES)
     b_val = trial.suggest_float('b', WOA_B_RANGE[0], WOA_B_RANGE[1])
@@ -109,7 +140,7 @@ def woa_global_objective(trial):
         np.random.seed(SEED_TRANSFORM)
         problem = BenchmarkFactory.create(name, DIM)
         reps = []
-        for r in range(3):
+        for r in range(10):
             np.random.seed(trial.number * 100 + r)
             woa = WhaleOptimizationAlgorithm(problem, pop_size, MAX_ITER)
             _, score, _, _ = woa.optimize(b=b_val, p_switch=p_val, strategy=strategy)
@@ -118,9 +149,8 @@ def woa_global_objective(trial):
         
     return np.mean(scores)
 
-
 def get_mean_trajectory(problem, pos_history_list):
-    # pos_history_list es una lista que contiene el pos_history de cada repeticion
+    """Extracts the average best fitness and coordinate progress across repetitions"""
     all_z1_paths = []
     all_fit_paths = []
 
@@ -144,31 +174,33 @@ def get_mean_trajectory(problem, pos_history_list):
         all_z1_paths.append(z1_traj)
         all_fit_paths.append(fit_traj)
 
-    # Calculamos la media a traves de las repeticiones (axis=0)
+    # Compute average across repetitions
     mean_z1 = np.mean(all_z1_paths, axis=0)
     mean_fit = np.mean(all_fit_paths, axis=0)
     
     return mean_z1, mean_fit
 
 def plot_mean_trajectory_comparison(z1_gwo, fit_gwo, z1_woa, fit_woa, name, save_path):
+    """Plots a 2D comparison of algorithm trajectories in the search space"""
     plt.figure(figsize=(10, 7))
     
-    # GWO
+    # GWO Visualization
     plt.plot(z1_gwo, fit_gwo, color='red', label='GWO Mean Progress', 
              alpha=0.8, lw=2, marker='o', markevery=max(1, len(z1_gwo)//10))
     
-    # WOA
+    # WOA Visualization
     plt.plot(z1_woa, fit_woa, color='blue', label='WOA Mean Progress', 
              alpha=0.8, lw=2, ls='--', marker='^', markevery=max(1, len(z1_woa)//10))
 
+    # Mark final average points
     plt.scatter(z1_gwo[-1], fit_gwo[-1], color='red', edgecolor='black', 
                 marker='X', s=150, zorder=5, label='GWO Mean Final')
     plt.scatter(z1_woa[-1], fit_woa[-1], color='blue', edgecolor='black', 
                 marker='X', s=150, zorder=5, label='WOA Mean Final')
 
-    plt.title(f"Trayectoria Promedio (n={N_REPETITIONS}): {name.capitalize()}", fontsize=12, fontweight='bold')
-    plt.xlabel("Dimensión Principal Promedio ($z_1$)")
-    plt.ylabel("Fitness Medio Encontrado")
+    plt.title(f"Average Trajectory (n={N_REPETITIONS}): {name.capitalize()}", fontsize=12, fontweight='bold')
+    plt.xlabel("Average Principal Dimension ($z_1$)")
+    plt.ylabel("Average Best Fitness Found")
     
     all_fits = np.concatenate([fit_gwo, fit_woa])
     if name.lower() == 'michalewicz' or np.any(all_fits <= 0):
@@ -182,8 +214,8 @@ def plot_mean_trajectory_comparison(z1_gwo, fit_gwo, z1_woa, fit_woa, name, save
     plt.savefig(save_path, dpi=300)
     plt.close()
 
-
 def main():
+    # Initialize output directory structure
     for d in [STRAT_OUTPUT_DIR_GWO, POP_OUTPUT_DIR_GWO, 
               STRAT_OUTPUT_DIR_WOA, POP_OUTPUT_DIR_WOA, 
               B_OUTPUT_DIR_WOA, P_OUTPUT_DIR_WOA, COMPARISON_DIR, TRAJECTORY_DIR]:
@@ -677,8 +709,11 @@ def main():
             
         gwo_mean = np.mean(gwo_reps_score)
         woa_mean = np.mean(woa_reps_score)
-        gwo_success = np.mean(np.abs(np.array(gwo_reps_score) - target) < SUCCESS_THRESHOLD) * 100
-        woa_success = np.mean(np.abs(np.array(woa_reps_score) - target) < SUCCESS_THRESHOLD) * 100
+
+        current_threshold = SUCCESS_THRESHOLDS.get(name, 1e-2)
+
+        gwo_success = np.mean(np.abs(np.array(gwo_reps_score) - target) < current_threshold) * 100
+        woa_success = np.mean(np.abs(np.array(woa_reps_score) - target) < current_threshold) * 100
         
         gwo_means_for_wilcoxon.append(gwo_mean)
         woa_means_for_wilcoxon.append(woa_mean)
@@ -734,7 +769,7 @@ def main():
     except Exception as e:
         print(f"Error calculating Wilcoxon test: {e}")
 
-    # Gráficos de comparación final
+    # Final comparative plots
     plt.figure(figsize=(10, 6))
     plt.scatter(global_gwo_times, global_gwo_fits, color='red', label='GWO', marker='o', s=80, alpha=0.7)
     plt.scatter(global_woa_times, global_woa_fits, color='blue', label='WOA', marker='^', s=80, alpha=0.7)
@@ -766,41 +801,66 @@ def main():
     plt.savefig(os.path.join(COMPARISON_DIR, "global_boxplot_normalized.png"))
     plt.close()
 
-# --- BLOQUE ACTUALIZADO: TRAYECTORIAS PROMEDIO ---
+# --- TRAJECTORIES AND XPL/XPT BALANCE ---
     print("\n" + "="*60)
-    print("STARTING 2D MEAN TRAJECTORY VISUALIZATION")
+    print("STARTING XPL/XPT NUMERIC ANALYSIS")
     print("="*60)
     
+    xpl_xpt_data = []
+
     for name in PROBLEM_NAMES:
-        print(f"Generating mean trajectory for {name}...")
+        print(f"Analyzing XPL/XPT balance for {name}...")
         np.random.seed(SEED_TRANSFORM)
         prob_traj = BenchmarkFactory.create(name, DIM)
         
+        gwo_reps_xpl, gwo_reps_xpt = [], []
+        woa_reps_xpl, woa_reps_xpt = [], []
+        
+        # Save histories for average trajectory visualization
         gwo_reps_hist = []
         woa_reps_hist = []
 
         for r in range(N_REPETITIONS):
             np.random.seed(r)
-            # GWO run
-            gwo_t = GreyWolfOptimizer(prob_traj, 20, MAX_ITER)
+            
+            # GWO execution
+            gwo_t = GreyWolfOptimizer(prob_traj, best_params_gwo['pop_size'], MAX_ITER)
             _, _, _, g_hist = gwo_t.optimize(strategy=best_params_gwo['strategy'])
+            g_xpl, g_xpt = calculate_xpl_xpt_numeric(g_hist)
+            gwo_reps_xpl.append(g_xpl)
+            gwo_reps_xpt.append(g_xpt)
             gwo_reps_hist.append(g_hist)
             
-            # WOA run
-            woa_t = WhaleOptimizationAlgorithm(prob_traj, 20, MAX_ITER)
+            # WOA execution
+            woa_t = WhaleOptimizationAlgorithm(prob_traj, best_params_woa['pop_size'], MAX_ITER)
             _, _, _, w_hist = woa_t.optimize(b=best_params_woa['b'], 
                                             p_switch=best_params_woa['p'], 
                                             strategy=best_params_woa['strategy'])
+            w_xpl, w_xpt = calculate_xpl_xpt_numeric(w_hist)
+            woa_reps_xpl.append(w_xpl)
+            woa_reps_xpt.append(w_xpt)
             woa_reps_hist.append(w_hist)
 
-        # Procesar promedios
+        # Store mean values across repetitions
+        xpl_xpt_data.append({
+            'Problem': name.capitalize(),
+            'GWO XPL%': np.mean(gwo_reps_xpl),
+            'GWO XPT%': np.mean(gwo_reps_xpt),
+            'WOA XPL%': np.mean(woa_reps_xpl),
+            'WOA XPT%': np.mean(woa_reps_xpt)
+        })
+
+        # Generate average trajectory plots
         z1_gwo_m, fit_gwo_m = get_mean_trajectory(prob_traj, gwo_reps_hist)
         z1_woa_m, fit_woa_m = get_mean_trajectory(prob_traj, woa_reps_hist)
-
-        # Graficar
         plot_mean_trajectory_comparison(z1_gwo_m, fit_gwo_m, z1_woa_m, fit_woa_m, name, 
                                         os.path.join(TRAJECTORY_DIR, f"mean_trajectory_{name}.png"))
-                                 
+
+    # Output balance results to terminal
+    df_balance = pd.DataFrame(xpl_xpt_data)
+    print("\nSummary of Exploration (XPL) vs Exploitation (XPT) - Means of 5 reps:")
+    print(df_balance.to_string(index=False))
+                                     
 
     print("All tasks finished successfully.")
 

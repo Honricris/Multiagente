@@ -87,7 +87,6 @@ def plot_critical_difference_diagram(average_ranks, n_datasets, alpha=0.05, outp
 def plot_boxplot_comparison(results_df, output_dir, filename="boxplot_comparison.png", title="Performance Distribution", y_scale='symlog'):
     """
     Generate a boxplot to visualize performance distribution.
-    Now accepts filename, title and scale arguments for reuse.
     """
     plt.figure(figsize=(8, 6))
     sns.boxplot(data=results_df)

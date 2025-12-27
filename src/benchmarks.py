@@ -35,7 +35,6 @@ class BenchmarkFunction:
         return self._objective(z)
 
     def _objective(self, z):
-        """Internal method to be implemented by each specific function."""
         raise NotImplementedError("This method must be implemented by the subclass.")
 
 
