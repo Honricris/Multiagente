@@ -119,68 +119,65 @@ def woa_global_objective(trial):
     return np.mean(scores)
 
 
+def get_mean_trajectory(problem, pos_history_list):
+    # pos_history_list es una lista que contiene el pos_history de cada repeticion
+    all_z1_paths = []
+    all_fit_paths = []
 
-def plot_trajectory_comparison(problem, gwo_pos_hist, woa_pos_hist, name, save_path):
-    def get_global_best_progress(pos_history):
+    for pos_history in pos_history_list:
         z1_traj = []
         fit_traj = []
-        
         current_best_fit = np.inf
         current_best_z = None
-        
+
         for pop in pos_history:
-            # Evaluamos la población actual para encontrar el mejor
             scores = [problem.compute(ind) for ind in pop]
             min_idx = np.argmin(scores)
             
-            # Actualizamos solo ante mejoras reales del Mejor Global
             if scores[min_idx] < current_best_fit:
                 current_best_fit = scores[min_idx]
                 current_best_z = problem._transform(pop[min_idx])
             
-            # Guardamos el estado para la trayectoria
             z1_traj.append(current_best_z[0])
             fit_traj.append(current_best_fit)
-            
-        return np.array(z1_traj), np.array(fit_traj)
+        
+        all_z1_paths.append(z1_traj)
+        all_fit_paths.append(fit_traj)
 
-    # Procesamos las trayectorias de progreso
-    z1_gwo, fit_gwo = get_global_best_progress(gwo_pos_hist)
-    z1_woa, fit_woa = get_global_best_progress(woa_pos_hist)
+    # Calculamos la media a traves de las repeticiones (axis=0)
+    mean_z1 = np.mean(all_z1_paths, axis=0)
+    mean_fit = np.mean(all_fit_paths, axis=0)
+    
+    return mean_z1, mean_fit
 
+def plot_mean_trajectory_comparison(z1_gwo, fit_gwo, z1_woa, fit_woa, name, save_path):
     plt.figure(figsize=(10, 7))
     
-    # Dibujamos el progreso de GWO
-    plt.plot(z1_gwo, fit_gwo, color='red', label='GWO Progress', 
+    # GWO
+    plt.plot(z1_gwo, fit_gwo, color='red', label='GWO Mean Progress', 
              alpha=0.8, lw=2, marker='o', markevery=max(1, len(z1_gwo)//10))
     
-    # Dibujamos el progreso de WOA
-    plt.plot(z1_woa, fit_woa, color='blue', label='WOA Progress', 
+    # WOA
+    plt.plot(z1_woa, fit_woa, color='blue', label='WOA Mean Progress', 
              alpha=0.8, lw=2, ls='--', marker='^', markevery=max(1, len(z1_woa)//10))
 
-    # Resaltamos los puntos finales
-    plt.scatter(float(z1_gwo[-1]), float(fit_gwo[-1]), color='red', 
-                edgecolor='black', marker='X', s=150, zorder=5, label='GWO Final')
-    plt.scatter(float(z1_woa[-1]), float(fit_woa[-1]), color='blue', 
-                edgecolor='black', marker='X', s=150, zorder=5, label='WOA Final')
+    plt.scatter(z1_gwo[-1], fit_gwo[-1], color='red', edgecolor='black', 
+                marker='X', s=150, zorder=5, label='GWO Mean Final')
+    plt.scatter(z1_woa[-1], fit_woa[-1], color='blue', edgecolor='black', 
+                marker='X', s=150, zorder=5, label='WOA Mean Final')
 
-    plt.title(f"Progreso del Mejor Global: {name.capitalize()}\n(Trayectoria en Espacio Z)", 
-              fontsize=12, fontweight='bold')
-    plt.xlabel("Dimensión Principal ($z_1$)")
-    plt.ylabel("Mejor Fitness Encontrado ($f_{min}$)")
+    plt.title(f"Trayectoria Promedio (n={N_REPETITIONS}): {name.capitalize()}", fontsize=12, fontweight='bold')
+    plt.xlabel("Dimensión Principal Promedio ($z_1$)")
+    plt.ylabel("Fitness Medio Encontrado")
     
-    # Lógica de escala adaptativa
     all_fits = np.concatenate([fit_gwo, fit_woa])
     if name.lower() == 'michalewicz' or np.any(all_fits <= 0):
-        # Usamos escala lineal para funciones con valores negativos
         plt.yscale('linear')
     else:
-        # Usamos escala logarítmica para funciones estrictamente positivas
         plt.yscale('log')
     
     plt.grid(True, which="both", alpha=0.3)
     plt.legend()
-    
     plt.tight_layout()
     plt.savefig(save_path, dpi=300)
     plt.close()
@@ -769,28 +766,40 @@ def main():
     plt.savefig(os.path.join(COMPARISON_DIR, "global_boxplot_normalized.png"))
     plt.close()
 
-    # --- NUEVO BLOQUE: EJECUCIÓN 2D Y TRAYECTORIAS ---
+# --- BLOQUE ACTUALIZADO: TRAYECTORIAS PROMEDIO ---
     print("\n" + "="*60)
-    print("STARTING 2D TRAJECTORY VISUALIZATION")
+    print("STARTING 2D MEAN TRAJECTORY VISUALIZATION")
     print("="*60)
     
-    for name in [
-    'sphere', 'rosenbrock', 'rastrigin', 'schwefel', 'ackley', 
-    'griewank', 'michalewicz', 'zakharov', 'dixon_price', 'levy']:
-        print(f"Generating 2D trajectory for {name}...")
+    for name in PROBLEM_NAMES:
+        print(f"Generating mean trajectory for {name}...")
         np.random.seed(SEED_TRANSFORM)
-        problem_2d = BenchmarkFactory.create(name, DIM)
+        prob_traj = BenchmarkFactory.create(name, DIM)
         
-        gwo_2d = GreyWolfOptimizer(problem_2d, 20, MAX_ITER)
-        _, _, _, gwo_pos_hist = gwo_2d.optimize(strategy=best_params_gwo['strategy'])
-        
-        woa_2d = WhaleOptimizationAlgorithm(problem_2d, 20, MAX_ITER)
-        _, _, _, woa_pos_hist = woa_2d.optimize(b=best_params_woa['b'], 
-                                              p_switch=best_params_woa['p'], 
-                                              strategy=best_params_woa['strategy'])
-        
-        plot_trajectory_comparison(problem_2d, gwo_pos_hist, woa_pos_hist, name, 
-                                 os.path.join(TRAJECTORY_DIR, f"trajectory_{name}.png"))
+        gwo_reps_hist = []
+        woa_reps_hist = []
+
+        for r in range(N_REPETITIONS):
+            np.random.seed(r)
+            # GWO run
+            gwo_t = GreyWolfOptimizer(prob_traj, 20, MAX_ITER)
+            _, _, _, g_hist = gwo_t.optimize(strategy=best_params_gwo['strategy'])
+            gwo_reps_hist.append(g_hist)
+            
+            # WOA run
+            woa_t = WhaleOptimizationAlgorithm(prob_traj, 20, MAX_ITER)
+            _, _, _, w_hist = woa_t.optimize(b=best_params_woa['b'], 
+                                            p_switch=best_params_woa['p'], 
+                                            strategy=best_params_woa['strategy'])
+            woa_reps_hist.append(w_hist)
+
+        # Procesar promedios
+        z1_gwo_m, fit_gwo_m = get_mean_trajectory(prob_traj, gwo_reps_hist)
+        z1_woa_m, fit_woa_m = get_mean_trajectory(prob_traj, woa_reps_hist)
+
+        # Graficar
+        plot_mean_trajectory_comparison(z1_gwo_m, fit_gwo_m, z1_woa_m, fit_woa_m, name, 
+                                        os.path.join(TRAJECTORY_DIR, f"mean_trajectory_{name}.png"))
                                  
 
     print("All tasks finished successfully.")
