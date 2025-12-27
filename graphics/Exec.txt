@@ -1,0 +1,183 @@
+============================================================
+STARTING GWO ANALYSIS
+============================================================
+Step 1 (GWO): Finding optimal global parameters using Optuna
+[I 2025-12-26 23:55:54,987] A new study created in memory with name: no-name-c7b58b32-e29b-46b3-8014-3e304db039cb
+[I 2025-12-26 23:57:56,117] Trial 0 finished with value: 386.157183391335 and parameters: {'pop_size': 124, 'strategy': 'linear'}. Best is trial 0 with value: 386.157183391335.
+[I 2025-12-27 00:00:22,994] Trial 1 finished with value: 402.1108461422709 and parameters: {'pop_size': 169, 'strategy': 'exp'}. Best is trial 0 with value: 386.157183391335.
+[I 2025-12-27 00:02:40,050] Trial 2 finished with value: 265.095608126548 and parameters: {'pop_size': 130, 'strategy': 'linear'}. Best is trial 2 with value: 265.095608126548.
+[I 2025-12-27 00:04:31,352] Trial 3 finished with value: 416.382885176545 and parameters: {'pop_size': 121, 'strategy': 'exp'}. Best is trial 2 with value: 265.095608126548.
+[I 2025-12-27 00:06:58,258] Trial 4 finished with value: 347.38967041251175 and parameters: {'pop_size': 160, 'strategy': 'sin'}. Best is trial 2 with value: 265.095608126548.
+[I 2025-12-27 00:08:39,842] Trial 5 finished with value: 437.9232015860563 and parameters: {'pop_size': 110, 'strategy': 'log'}. Best is trial 2 with value: 265.095608126548.
+[I 2025-12-27 00:08:59,221] Trial 6 finished with value: 1429.6475358355272 and parameters: {'pop_size': 19, 'strategy': 'log'}. Best is trial 2 with value: 265.095608126548.
+[I 2025-12-27 00:11:02,060] Trial 7 finished with value: 409.7900532081966 and parameters: {'pop_size': 133, 'strategy': 'log'}. Best is trial 2 with value: 265.095608126548.
+[I 2025-12-27 00:11:45,274] Trial 8 finished with value: 829.5965920693931 and parameters: {'pop_size': 45, 'strategy': 'sin'}. Best is trial 2 with value: 265.095608126548.
+[I 2025-12-27 00:14:42,244] Trial 9 finished with value: 368.2729586674324 and parameters: {'pop_size': 194, 'strategy': 'exp'}. Best is trial 2 with value: 265.095608126548.
+[I 2025-12-27 00:15:36,332] Trial 10 finished with value: 521.0371487421442 and parameters: {'pop_size': 57, 'strategy': 'linear'}. Best is trial 2 with value: 265.095608126548.
+[I 2025-12-27 00:18:05,842] Trial 11 finished with value: 345.81609218091626 and parameters: {'pop_size': 162, 'strategy': 'sin'}. Best is trial 2 with value: 265.095608126548.
+[I 2025-12-27 00:19:17,276] Trial 12 finished with value: 471.46469283815225 and parameters: {'pop_size': 76, 'strategy': 'sin'}. Best is trial 2 with value: 265.095608126548.
+[I 2025-12-27 00:21:38,079] Trial 13 finished with value: 325.9020405842198 and parameters: {'pop_size': 153, 'strategy': 'linear'}. Best is trial 2 with value: 265.095608126548.
+[I 2025-12-27 00:22:57,833] Trial 14 finished with value: 412.6651402914773 and parameters: {'pop_size': 85, 'strategy': 'linear'}. Best is trial 2 with value: 265.095608126548.
+[I 2025-12-27 00:25:09,808] Trial 15 finished with value: 450.96587341119283 and parameters: {'pop_size': 143, 'strategy': 'linear'}. Best is trial 2 with value: 265.095608126548.
+[I 2025-12-27 00:28:10,950] Trial 16 finished with value: 309.8132560463873 and parameters: {'pop_size': 198, 'strategy': 'linear'}. Best is trial 2 with value: 265.095608126548.
+[I 2025-12-27 00:31:14,430] Trial 17 finished with value: 381.6476536492556 and parameters: {'pop_size': 200, 'strategy': 'linear'}. Best is trial 2 with value: 265.095608126548.
+[I 2025-12-27 00:33:59,284] Trial 18 finished with value: 344.20695042488285 and parameters: {'pop_size': 180, 'strategy': 'linear'}. Best is trial 2 with value: 265.095608126548.
+[I 2025-12-27 00:35:22,103] Trial 19 finished with value: 558.6291962739404 and parameters: {'pop_size': 89, 'strategy': 'linear'}. Best is trial 2 with value: 265.095608126548.
+[I 2025-12-27 00:38:11,462] Trial 20 finished with value: 330.392493542719 and parameters: {'pop_size': 184, 'strategy': 'linear'}. Best is trial 2 with value: 265.095608126548.
+[I 2025-12-27 00:40:29,052] Trial 21 finished with value: 420.6190040600874 and parameters: {'pop_size': 147, 'strategy': 'linear'}. Best is trial 2 with value: 265.095608126548.
+[I 2025-12-27 00:42:41,374] Trial 22 finished with value: 356.7800905396783 and parameters: {'pop_size': 143, 'strategy': 'linear'}. Best is trial 2 with value: 265.095608126548.
+[I 2025-12-27 00:44:17,378] Trial 23 finished with value: 405.83993760249666 and parameters: {'pop_size': 103, 'strategy': 'linear'}. Best is trial 2 with value: 265.095608126548.
+[I 2025-12-27 00:46:53,345] Trial 24 finished with value: 371.86711548187594 and parameters: {'pop_size': 170, 'strategy': 'linear'}. Best is trial 2 with value: 265.095608126548.
+[I 2025-12-27 00:49:14,817] Trial 25 finished with value: 355.88791351611223 and parameters: {'pop_size': 153, 'strategy': 'linear'}. Best is trial 2 with value: 265.095608126548.
+[I 2025-12-27 00:52:00,704] Trial 26 finished with value: 304.82638810722096 and parameters: {'pop_size': 181, 'strategy': 'linear'}. Best is trial 2 with value: 265.095608126548.
+[I 2025-12-27 00:54:48,179] Trial 27 finished with value: 369.5843921435111 and parameters: {'pop_size': 183, 'strategy': 'exp'}. Best is trial 2 with value: 265.095608126548.
+[I 2025-12-27 00:57:51,269] Trial 28 finished with value: 347.00568244793834 and parameters: {'pop_size': 200, 'strategy': 'log'}. Best is trial 2 with value: 265.095608126548.
+[I 2025-12-27 00:59:47,322] Trial 29 finished with value: 358.2222548070768 and parameters: {'pop_size': 125, 'strategy': 'linear'}. Best is trial 2 with value: 265.095608126548.
+[I 2025-12-27 01:02:33,715] Trial 30 finished with value: 378.94173100783354 and parameters: {'pop_size': 181, 'strategy': 'linear'}. Best is trial 2 with value: 265.095608126548.
+[I 2025-12-27 01:04:35,989] Trial 31 finished with value: 355.5114125806718 and parameters: {'pop_size': 132, 'strategy': 'linear'}. Best is trial 2 with value: 265.095608126548.
+[I 2025-12-27 01:07:08,243] Trial 32 finished with value: 355.0224689382913 and parameters: {'pop_size': 167, 'strategy': 'linear'}. Best is trial 2 with value: 265.095608126548.
+[I 2025-12-27 01:09:47,879] Trial 33 finished with value: 396.73322569801667 and parameters: {'pop_size': 174, 'strategy': 'linear'}. Best is trial 2 with value: 265.095608126548.
+[I 2025-12-27 01:12:08,752] Trial 34 finished with value: 316.06403101833774 and parameters: {'pop_size': 154, 'strategy': 'exp'}. Best is trial 2 with value: 265.095608126548.
+[I 2025-12-27 01:13:52,568] Trial 35 finished with value: 395.54688932154465 and parameters: {'pop_size': 112, 'strategy': 'exp'}. Best is trial 2 with value: 265.095608126548.
+[I 2025-12-27 01:16:48,405] Trial 36 finished with value: 295.1579344576261 and parameters: {'pop_size': 191, 'strategy': 'exp'}. Best is trial 2 with value: 265.095608126548.
+[I 2025-12-27 01:19:42,826] Trial 37 finished with value: 350.7949849241128 and parameters: {'pop_size': 191, 'strategy': 'exp'}. Best is trial 2 with value: 265.095608126548.
+[I 2025-12-27 01:22:21,744] Trial 38 finished with value: 389.10174023078633 and parameters: {'pop_size': 173, 'strategy': 'exp'}. Best is trial 2 with value: 265.095608126548.
+[I 2025-12-27 01:25:18,413] Trial 39 finished with value: 388.82185407067584 and parameters: {'pop_size': 193, 'strategy': 'log'}. Best is trial 2 with value: 265.095608126548.
+[I 2025-12-27 01:28:11,599] Trial 40 finished with value: 341.1122418675253 and parameters: {'pop_size': 190, 'strategy': 'exp'}. Best is trial 2 with value: 265.095608126548.
+[I 2025-12-27 01:30:40,581] Trial 41 finished with value: 349.4536022138192 and parameters: {'pop_size': 162, 'strategy': 'exp'}. Best is trial 2 with value: 265.095608126548.
+[I 2025-12-27 01:33:04,863] Trial 42 finished with value: 378.1526007269396 and parameters: {'pop_size': 158, 'strategy': 'exp'}. Best is trial 2 with value: 265.095608126548.
+[I 2025-12-27 01:35:10,030] Trial 43 finished with value: 376.68597354346423 and parameters: {'pop_size': 135, 'strategy': 'exp'}. Best is trial 2 with value: 265.095608126548.
+[I 2025-12-27 01:37:50,624] Trial 44 finished with value: 415.4980801917589 and parameters: {'pop_size': 175, 'strategy': 'sin'}. Best is trial 2 with value: 265.095608126548.
+[I 2025-12-27 01:38:06,256] Trial 45 finished with value: 1801.9893324329423 and parameters: {'pop_size': 15, 'strategy': 'exp'}. Best is trial 2 with value: 265.095608126548.
+[I 2025-12-27 01:40:58,154] Trial 46 finished with value: 366.6411295164728 and parameters: {'pop_size': 187, 'strategy': 'log'}. Best is trial 2 with value: 265.095608126548.
+[I 2025-12-27 01:42:45,117] Trial 47 finished with value: 394.3457320414613 and parameters: {'pop_size': 116, 'strategy': 'sin'}. Best is trial 2 with value: 265.095608126548.
+[I 2025-12-27 01:45:46,643] Trial 48 finished with value: 373.4634547865949 and parameters: {'pop_size': 200, 'strategy': 'exp'}. Best is trial 2 with value: 265.095608126548.
+[I 2025-12-27 01:47:19,625] Trial 49 finished with value: 421.5863808024428 and parameters: {'pop_size': 100, 'strategy': 'exp'}. Best is trial 2 with value: 265.095608126548.
+Optimal GWO configuration: {'pop_size': 130, 'strategy': 'linear'}
+
+Step 2 (GWO): Analyzing decay strategies
+GWO Strategy Friedman Result: F = 3.7119, p = 2.3454e-02
+Significant GWO strategy difference found. Generating CD Diagram
+
+Step 3 (GWO): Analyzing population scale impact
+GWO Population Friedman Result: F = 106.5963, p = 4.0346e-28
+Significant GWO population difference found. Generating CD Diagram
+
+Step 4 (GWO): Generating plots
+
+============================================================
+STARTING WOA ANALYSIS
+============================================================
+Step 1 (WOA): Finding optimal global parameters using Optuna
+[I 2025-12-27 02:40:01,639] A new study created in memory with name: no-name-f70a569e-1545-48b0-9f00-0c6c88ddf996
+[I 2025-12-27 02:41:47,417] Trial 0 finished with value: 11578.653047893755 and parameters: {'pop_size': 163, 'strategy': 'exp', 'b': 2.0916070771277453, 'p': 0.5761053993839788}. Best is trial 0 with value: 11578.653047893755.
+[I 2025-12-27 02:43:20,866] Trial 1 finished with value: 5453.817446555182 and parameters: {'pop_size': 144, 'strategy': 'linear', 'b': 0.8368350600689127, 'p': 0.3804249846004645}. Best is trial 1 with value: 5453.817446555182.
+[I 2025-12-27 02:44:25,151] Trial 2 finished with value: 28707.057879346394 and parameters: {'pop_size': 95, 'strategy': 'sin', 'b': 2.4434964877806706, 'p': 0.7061918507588372}. Best is trial 1 with value: 5453.817446555182.
+[I 2025-12-27 02:46:09,277] Trial 3 finished with value: 14011.32333884463 and parameters: {'pop_size': 160, 'strategy': 'linear', 'b': 1.5870491988665887, 'p': 0.5339275606812128}. Best is trial 1 with value: 5453.817446555182.
+[I 2025-12-27 02:47:37,254] Trial 4 finished with value: 983.22461834146 and parameters: {'pop_size': 136, 'strategy': 'exp', 'b': 2.4700348673562935, 'p': 0.33515763416277045}. Best is trial 4 with value: 983.22461834146.
+[I 2025-12-27 02:49:02,556] Trial 5 finished with value: 1779.514286948237 and parameters: {'pop_size': 130, 'strategy': 'exp', 'b': 1.324924158260258, 'p': 0.27233072654827684}. Best is trial 4 with value: 983.22461834146.
+[I 2025-12-27 02:50:12,943] Trial 6 finished with value: 24301.940854938228 and parameters: {'pop_size': 105, 'strategy': 'log', 'b': 2.5221454916748955, 'p': 0.6612011846637259}. Best is trial 4 with value: 983.22461834146.
+[I 2025-12-27 02:50:31,418] Trial 7 finished with value: 96363.76909477448 and parameters: {'pop_size': 21, 'strategy': 'log', 'b': 0.9985903937598954, 'p': 0.48840327910671144}. Best is trial 4 with value: 983.22461834146.
+[I 2025-12-27 02:51:00,930] Trial 8 finished with value: 64496.691446068384 and parameters: {'pop_size': 38, 'strategy': 'log', 'b': 2.943877939431503, 'p': 0.7175289522252684}. Best is trial 4 with value: 983.22461834146.
+[I 2025-12-27 02:52:56,010] Trial 9 finished with value: 546.9793781614658 and parameters: {'pop_size': 179, 'strategy': 'exp', 'b': 1.6639731406807365, 'p': 0.25720551138285913}. Best is trial 9 with value: 546.9793781614658.
+[I 2025-12-27 02:55:03,099] Trial 10 finished with value: 377.12793100967224 and parameters: {'pop_size': 198, 'strategy': 'sin', 'b': 1.8768467245257923, 'p': 0.2187861235877518}. Best is trial 10 with value: 377.12793100967224.
+[I 2025-12-27 02:57:08,432] Trial 11 finished with value: 420.6871912035085 and parameters: {'pop_size': 196, 'strategy': 'sin', 'b': 1.8371328114044825, 'p': 0.21617236157645542}. Best is trial 10 with value: 377.12793100967224.
+[I 2025-12-27 02:59:16,196] Trial 12 finished with value: 360.69692588703816 and parameters: {'pop_size': 199, 'strategy': 'sin', 'b': 1.991358486836795, 'p': 0.20876142276303833}. Best is trial 12 with value: 360.69692588703816.
+[I 2025-12-27 03:01:21,810] Trial 13 finished with value: 1272.4532505516268 and parameters: {'pop_size': 194, 'strategy': 'sin', 'b': 2.081396256385132, 'p': 0.4026540190868188}. Best is trial 12 with value: 360.69692588703816.
+[I 2025-12-27 03:02:11,956] Trial 14 finished with value: 14464.307847355976 and parameters: {'pop_size': 71, 'strategy': 'sin', 'b': 1.2264456886671136, 'p': 0.3197179265630039}. Best is trial 12 with value: 360.69692588703816.
+[I 2025-12-27 03:04:03,383] Trial 15 finished with value: 423.7380197764652 and parameters: {'pop_size': 173, 'strategy': 'sin', 'b': 2.094985242664455, 'p': 0.20417938606108185}. Best is trial 12 with value: 360.69692588703816.
+[I 2025-12-27 03:06:10,655] Trial 16 finished with value: 3763.4472970619654 and parameters: {'pop_size': 198, 'strategy': 'sin', 'b': 1.4338788536668843, 'p': 0.44520850483122676}. Best is trial 12 with value: 360.69692588703816.
+[I 2025-12-27 03:06:56,731] Trial 17 finished with value: 12771.559528765525 and parameters: {'pop_size': 66, 'strategy': 'sin', 'b': 1.893985734362054, 'p': 0.30517913405787545}. Best is trial 12 with value: 360.69692588703816.
+[I 2025-12-27 03:08:34,951] Trial 18 finished with value: 8054.006962252308 and parameters: {'pop_size': 150, 'strategy': 'sin', 'b': 0.5787686450711127, 'p': 0.38429841234124523}. Best is trial 12 with value: 360.69692588703816.
+[I 2025-12-27 03:09:58,018] Trial 19 finished with value: 24993.10564750834 and parameters: {'pop_size': 125, 'strategy': 'linear', 'b': 2.973044306957508, 'p': 0.6109411768139815}. Best is trial 12 with value: 360.69692588703816.
+[I 2025-12-27 03:11:52,924] Trial 20 finished with value: 495.9656846189788 and parameters: {'pop_size': 179, 'strategy': 'sin', 'b': 2.3108495023542552, 'p': 0.25327485444547254}. Best is trial 12 with value: 360.69692588703816.
+[I 2025-12-27 03:14:01,126] Trial 21 finished with value: 490.1918967221013 and parameters: {'pop_size': 198, 'strategy': 'sin', 'b': 1.7969061051280253, 'p': 0.21848131754364453}. Best is trial 12 with value: 360.69692588703816.
+[I 2025-12-27 03:16:00,157] Trial 22 finished with value: 375.2486093477347 and parameters: {'pop_size': 184, 'strategy': 'sin', 'b': 1.9339237065507506, 'p': 0.22618313097442347}. Best is trial 12 with value: 360.69692588703816.
+[I 2025-12-27 03:17:55,498] Trial 23 finished with value: 666.5736280314912 and parameters: {'pop_size': 179, 'strategy': 'sin', 'b': 2.2020587969878727, 'p': 0.30304711872878576}. Best is trial 12 with value: 360.69692588703816.
+[I 2025-12-27 03:19:40,284] Trial 24 finished with value: 18766.009669745203 and parameters: {'pop_size': 160, 'strategy': 'sin', 'b': 2.651050633851996, 'p': 0.7873988383077086}. Best is trial 12 with value: 360.69692588703816.
+[I 2025-12-27 03:21:39,000] Trial 25 finished with value: 927.8094908868859 and parameters: {'pop_size': 183, 'strategy': 'sin', 'b': 1.919569413502749, 'p': 0.3512611519410054}. Best is trial 12 with value: 360.69692588703816.
+[I 2025-12-27 03:22:56,939] Trial 26 finished with value: 922.7421580297689 and parameters: {'pop_size': 118, 'strategy': 'sin', 'b': 1.5905653307153655, 'p': 0.27095778937488424}. Best is trial 12 with value: 360.69692588703816.
+[I 2025-12-27 03:24:35,462] Trial 27 finished with value: 7517.764419026336 and parameters: {'pop_size': 151, 'strategy': 'linear', 'b': 1.4451650439308463, 'p': 0.4328857516422192}. Best is trial 12 with value: 360.69692588703816.
+[I 2025-12-27 03:26:23,876] Trial 28 finished with value: 570.7451584931538 and parameters: {'pop_size': 168, 'strategy': 'log', 'b': 1.9723659520914514, 'p': 0.23834447096013311}. Best is trial 12 with value: 360.69692588703816.
+[I 2025-12-27 03:28:23,997] Trial 29 finished with value: 424.5075347084068 and parameters: {'pop_size': 188, 'strategy': 'exp', 'b': 2.7405632594517995, 'p': 0.2699822099412381}. Best is trial 12 with value: 360.69692588703816.
+[I 2025-12-27 03:30:08,811] Trial 30 finished with value: 457.7387882406304 and parameters: {'pop_size': 162, 'strategy': 'sin', 'b': 2.1840318672489754, 'p': 0.20899004180026376}. Best is trial 12 with value: 360.69692588703816.
+[I 2025-12-27 03:32:16,114] Trial 31 finished with value: 386.9827376546855 and parameters: {'pop_size': 198, 'strategy': 'sin', 'b': 1.7618902397705258, 'p': 0.20123907733996485}. Best is trial 12 with value: 360.69692588703816.
+[I 2025-12-27 03:34:16,517] Trial 32 finished with value: 656.9084486371291 and parameters: {'pop_size': 186, 'strategy': 'sin', 'b': 1.6940313796738005, 'p': 0.2911244386188426}. Best is trial 12 with value: 360.69692588703816.
+[I 2025-12-27 03:36:24,270] Trial 33 finished with value: 340.86935840101603 and parameters: {'pop_size': 199, 'strategy': 'sin', 'b': 2.049711141588276, 'p': 0.20407991229145545}. Best is trial 33 with value: 340.86935840101603.
+[I 2025-12-27 03:38:14,463] Trial 34 finished with value: 1195.5146933090841 and parameters: {'pop_size': 171, 'strategy': 'linear', 'b': 2.3447992773333484, 'p': 0.3600447882326527}. Best is trial 33 with value: 340.86935840101603.
+[I 2025-12-27 03:39:49,344] Trial 35 finished with value: 452.9854100176949 and parameters: {'pop_size': 144, 'strategy': 'sin', 'b': 2.057114460531351, 'p': 0.24164806055324223}. Best is trial 33 with value: 340.86935840101603.
+[I 2025-12-27 03:41:49,059] Trial 36 finished with value: 640.8572765629749 and parameters: {'pop_size': 187, 'strategy': 'sin', 'b': 2.28437826419159, 'p': 0.3309726316314688}. Best is trial 33 with value: 340.86935840101603.
+[I 2025-12-27 03:42:44,197] Trial 37 finished with value: 5474.146918656494 and parameters: {'pop_size': 81, 'strategy': 'exp', 'b': 1.4927900316681, 'p': 0.2881395172785366}. Best is trial 33 with value: 340.86935840101603.
+[I 2025-12-27 03:44:27,274] Trial 38 finished with value: 468.16593335976677 and parameters: {'pop_size': 156, 'strategy': 'sin', 'b': 1.987970530291823, 'p': 0.23609527648648534}. Best is trial 33 with value: 340.86935840101603.
+[I 2025-12-27 03:46:17,090] Trial 39 finished with value: 13131.567031745866 and parameters: {'pop_size': 168, 'strategy': 'log', 'b': 2.509366738122237, 'p': 0.5465075371801685}. Best is trial 33 with value: 340.86935840101603.
+[I 2025-12-27 03:47:49,098] Trial 40 finished with value: 10715.588124856751 and parameters: {'pop_size': 139, 'strategy': 'linear', 'b': 1.2750253486128473, 'p': 0.47720451739662495}. Best is trial 33 with value: 340.86935840101603.
+[I 2025-12-27 03:49:58,371] Trial 41 finished with value: 356.1844545539136 and parameters: {'pop_size': 200, 'strategy': 'sin', 'b': 1.819261284320533, 'p': 0.2102609093423008}. Best is trial 33 with value: 340.86935840101603.
+[I 2025-12-27 03:51:59,479] Trial 42 finished with value: 443.14027766173285 and parameters: {'pop_size': 187, 'strategy': 'sin', 'b': 1.838565394247908, 'p': 0.2392068470820938}. Best is trial 33 with value: 340.86935840101603.
+[I 2025-12-27 03:54:08,441] Trial 43 finished with value: 415.2742494537662 and parameters: {'pop_size': 200, 'strategy': 'sin', 'b': 1.6513597157039395, 'p': 0.27027463023384696}. Best is trial 33 with value: 340.86935840101603.
+[I 2025-12-27 03:56:10,097] Trial 44 finished with value: 430.26246311958977 and parameters: {'pop_size': 190, 'strategy': 'sin', 'b': 2.158989185454674, 'p': 0.20097523838274092}. Best is trial 33 with value: 340.86935840101603.
+[I 2025-12-27 03:58:03,105] Trial 45 finished with value: 1393.7729035834764 and parameters: {'pop_size': 175, 'strategy': 'exp', 'b': 1.1425095424471197, 'p': 0.24029834465550154}. Best is trial 33 with value: 340.86935840101603.
+[I 2025-12-27 03:58:36,040] Trial 46 finished with value: 32545.996313353342 and parameters: {'pop_size': 44, 'strategy': 'sin', 'b': 2.00081829717365, 'p': 0.33354630072582503}. Best is trial 33 with value: 340.86935840101603.
+[I 2025-12-27 04:00:38,441] Trial 47 finished with value: 458.2841938353334 and parameters: {'pop_size': 192, 'strategy': 'log', 'b': 2.3881687812124994, 'p': 0.2788376658924057}. Best is trial 33 with value: 340.86935840101603.
+[I 2025-12-27 04:02:35,692] Trial 48 finished with value: 443.81912609884665 and parameters: {'pop_size': 180, 'strategy': 'sin', 'b': 1.5850909341616348, 'p': 0.22474890844915216}. Best is trial 33 with value: 340.86935840101603.
+[I 2025-12-27 04:03:49,848] Trial 49 finished with value: 2071.105171268797 and parameters: {'pop_size': 112, 'strategy': 'sin', 'b': 1.8820057474185923, 'p': 0.3130342825552362}. Best is trial 33 with value: 340.86935840101603.
+Optimal WOA configuration: {'pop_size': 199, 'strategy': 'sin', 'b': 2.049711141588276, 'p': 0.20407991229145545}
+
+Step 2 (WOA): Analyzing decay strategies
+WOA Strategy Friedman Result: F = 1.5634, p = 2.2117e-01
+
+Step 3 (WOA): Analyzing population scale impact
+WOA Population Friedman Result: F = 778.5000, p = 1.4611e-50
+Significant WOA population difference found. Generating CD Diagram
+
+Step 4 (WOA): Analyzing Parameter b impact
+WOA Parameter b Friedman Result: F = 5.9502, p = 8.8032e-04
+
+Step 5 (WOA): Analyzing Parameter p impact
+WOA Parameter p Friedman Result: F = 17.0116, p = 6.4510e-08
+
+Step 6 (WOA): Generating plots
+
+============================================================
+STARTING FINAL COMPARISON: GWO vs WOA
+============================================================
+Comparing algorithms on sphere...
+Comparing algorithms on rosenbrock...
+Comparing algorithms on rastrigin...
+Comparing algorithms on schwefel...
+Comparing algorithms on ackley...
+Comparing algorithms on griewank...
+Comparing algorithms on michalewicz...
+Comparing algorithms on zakharov...
+Comparing algorithms on dixon_price...
+Comparing algorithms on levy...
+
+Performing Wilcoxon Signed-Rank Test (Global)...
+Wilcoxon Statistic: 27.0, P-Value: 1.0000e+00
+
+============================================================
+STARTING XPL/XPT NUMERIC ANALYSIS
+============================================================
+Analyzing XPL/XPT balance for sphere...
+Analyzing XPL/XPT balance for rosenbrock...
+Analyzing XPL/XPT balance for rastrigin...
+Analyzing XPL/XPT balance for schwefel...
+Analyzing XPL/XPT balance for ackley...
+Analyzing XPL/XPT balance for griewank...
+Analyzing XPL/XPT balance for michalewicz...
+Analyzing XPL/XPT balance for zakharov...
+Analyzing XPL/XPT balance for dixon_price...
+Analyzing XPL/XPT balance for levy...
+
+Summary of Exploration (XPL) vs Exploitation (XPT) - Means of 5 reps:
+    Problem  GWO XPL%  GWO XPT%  WOA XPL%  WOA XPT%
+     Sphere 13.438069 86.561931 20.692925 79.307075
+ Rosenbrock 13.370648 86.629352 20.457794 79.542206
+  Rastrigin 11.705423 88.294577 18.016542 81.983458
+   Schwefel 14.316795 85.683205 16.089982 83.910018
+     Ackley 13.377676 86.622324 16.446778 83.553222
+   Griewank 13.438069 86.561931 20.693624 79.306376
+Michalewicz 23.144392 76.855608 26.075807 73.924193
+   Zakharov 11.217760 88.782240 20.923806 79.076194
+Dixon_price 12.394758 87.605242 19.553432 80.446568
+       Levy 11.968252 88.031748 18.059098 81.940902
+All tasks finished successfully.
